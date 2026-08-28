@@ -5,6 +5,71 @@
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.5.0] - 2026-08-28
+
+### 新增功能:`/ql-docsmap` 文档树生成
+
+参考 GSD `map-codebase` 设计,但**产出与 `/ql-chapter` 完全一致格式的文档树**——根据用户决策"结构一模一样才能让工作流最顺畅"。
+
+### 核心定位
+
+| 命令 | 触发 | 数据来源 | 文档树角色 |
+|------|------|----------|----------|
+| `/ql-docsmap` | 项目初始化 / 接手项目 / 文档树刷新 | **目录扫描**(package.json scripts / 路由 / 事件) | **首章节**(init) |
+| `/ql-chapter` | qql-ship 完成后 | OpenAPI + 构建/验证报告 | 后续章节 |
+
+**两者产出布局完全相同**:`.qiling/docs/README.md` + `.qiling/docs/chapters/chapter-NN-*.md`,索引**共享一份**,增量 append。
+
+### 新增
+
+- `commands/ql-docsmap.md` —— 文档树生成命令(支持 `--path`、`--refresh`、`--merge`)
+- `skills/ql-docsmap/SKILL.md` —— 文档树技能定义
+- `workflows/docsmap.md` —— 文档树工作流(与 chapter 工作流平行)
+- `scripts/docsmap.mjs` —— 真实渲染器(端到端,9/9 断言通过)
+
+### 与 GSD map-codebase 的差异
+
+| 维度 | GSD map-codebase | ql-docsmap |
+|------|-----------------|------------|
+| 产出 | 7 份独立分析报告(STACK/ARCHITECTURE/CONCERNS 等) | 1 章节文档(5 节结构)+ 索引更新 |
+| 索引 | 各自独立 | 与 ql-chapter 共享 `.qiling/docs/README.md` |
+| 增量 | 整批重建 | 章节 ID 自动从现有最大值 + 1,append |
+| 与开发流关系 | 独立产出 | 与 ql-chapter 共用同一文档树 |
+
+### docsmap 提取项(从代码扫描)
+
+- `package.json` 的 scripts(命令清单)
+- 路由:`*.routes.*` / `*.router.*` 中的 `app.get/post/put/delete(...)`
+- 事件:`*.event.*` / `*.emitter.*` 中的 `emit('user.created')` 等
+- 目录树(深度 4,忽略 node_modules / dist / build / .git / .qiling / .planning)
+
+### 7 项端到端断言
+
+| # | 断言 | 结果 |
+|---|------|------|
+| 1 | 章节文件 ≥ 1 KB | ✅ 3706 字节 |
+| 2 | 端点/能力表 ≥ 1 行 | ✅ 1 行 |
+| 3 | 目录树图含真实路径 | ✅ |
+| 4 | 索引含 chapter 链接 | ✅ |
+| 5 | 5 节结构完整(与 ql-chapter 一致) | ✅ |
+| 6 | 无未替换占位符 | ✅ |
+| 7 | 与 templates/chapter.md 结构对齐 | ✅ 3 关键节标题一致 |
+
+### 改进
+
+- `scripts/validate.mjs` 同步:`expectedCommands` 增加 `ql-docsmap`、`requiredWorkflows` 增加 `docsmap.md`、新增 `scripts/docsmap.mjs` 存在性校验
+- `package.json` 新增 npm script `docsmap`、版本号 0.4.1 → 0.5.0
+
+### 验证证据
+
+| 验证 | 结果 |
+|------|------|
+| `npm run validate` | ✅ 0 错误 1 警告,5 commands / 6 workflows / 11 templates |
+| `npm run verify:flow` | ✅ 20/20 |
+| `npm run chapter:render` | ✅ 9/9 |
+| `npm run docsmap` | ✅ **9/9** |
+| `npm run verify:schema` | ✅ 通过 |
+
 ## [0.4.1] - 2026-08-28
 
 ### 新增:端到端章节渲染验证

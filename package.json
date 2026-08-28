@@ -1,6 +1,6 @@
 {
   "name": "@qiling/zcode-workflow",
-  "version": "0.4.1",
+  "version": "0.5.0",
   "description": "器灵 Zcode 工作流插件——讨论驱动 + Walking Skeleton 骨架先行 + 波次并行。三步循环:讨论 → 构建 → 交付。",
   "type": "module",
   "main": "capabilities/zcode/plugin.json",
@@ -38,6 +38,7 @@
     "rename": "node scripts/rename.mjs",
     "verify:flow": "node scripts/flow-verify.mjs",
     "chapter:render": "node scripts/chapter-render.mjs",
+    "docsmap": "node scripts/docsmap.mjs",
     "verify:schema": "node scripts/jsonschema-check.mjs templates/config-schema.json templates/config.json"
   }
 }

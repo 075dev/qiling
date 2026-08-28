@@ -60,7 +60,7 @@ const plugin = readJson('capabilities/zcode/plugin.json');
 check(plugin !== null, 'capabilities/zcode/plugin.json 必须存在');
 
 // 4. commands/ 与 skills/ 一致性
-const expectedCommands = ['ql-discuss', 'ql-build', 'ql-ship', 'ql-chapter'];
+const expectedCommands = ['ql-discuss', 'ql-build', 'ql-ship', 'ql-chapter', 'ql-docsmap'];
 const commandFiles = listFiles('commands', '.md');
 console.log(`  → 发现 ${commandFiles.length} 个 commands`);
 
@@ -78,13 +78,14 @@ for (const cmd of expectedCommands) {
   }
 }
 
-// 5. workflows/ 必须存在 5 个核心文件(讨论/骨架/填充/交付/章节)
+// 5. workflows/ 必须存在 6 个核心文件(讨论/骨架/填充/交付/章节/docsmap)
 const requiredWorkflows = [
   'discuss.md',
   'build-skeleton.md',
   'build-fill.md',
   'ship.md',
-  'chapter.md'
+  'chapter.md',
+  'docsmap.md'
 ];
 
 const workflowFiles = listFiles('workflows', '.md');
@@ -244,6 +245,7 @@ check(existsSync(join(ROOT, 'docs/CHAPTER-ARCHITECTURE.md')), 'docs/CHAPTER-ARCH
 
 // 11. 验证脚本
 check(existsSync(join(ROOT, 'scripts/chapter-render.mjs')), 'scripts/chapter-render.mjs 必须存在(端到端章节渲染)');
+check(existsSync(join(ROOT, 'scripts/docsmap.mjs')), 'scripts/docsmap.mjs 必须存在(文档树渲染)');
 check(existsSync(join(ROOT, 'scripts/flow-verify.mjs')), 'scripts/flow-verify.mjs 必须存在');
 check(existsSync(join(ROOT, 'scripts/jsonschema-check.mjs')), 'scripts/jsonschema-check.mjs 必须存在');
 

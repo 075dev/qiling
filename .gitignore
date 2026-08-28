@@ -55,3 +55,6 @@ coverage/
 .planning/context/event-flow.md
 .planning/STATE.md
 .planning/build/
+
+# 器灵文档树(由 ql-docsmap / ql-chapter 产出,项目本地文档)
+.qiling/
