@@ -1,7 +1,7 @@
 {
   "name": "qiling",
   "displayName": "器灵 Zcode 工作流",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "讨论驱动的 Zcode 工作流插件(器灵)。讨论出 OpenAPI + 事件流程,AI 自动构建 Walking Skeleton 并填充,最后交付。",
   "author": {
     "name": "ZcodePlugin",

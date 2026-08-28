@@ -5,6 +5,59 @@
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.4.0] - 2026-08-28
+
+### 新增功能:章节留档(`/ql-chapter`)
+
+**核心思想:** 不以任务留档,而以章节留档。一个 ql 循环(讨论→构建→交付)= 一个章节。章节文档既是项目开发流程留档,也是该阶段 API 的开发者文档。
+
+### 新增
+
+- `commands/ql-chapter.md` —— 章节生成命令(支持 `--preview`、`--regenerate-all`)
+- `workflows/chapter.md` —— 章节生成工作流实现
+- `skills/ql-chapter/SKILL.md` —— 章节技能定义
+- `templates/chapter.md` —— 章节文件模板(含 5 节结构)
+- `templates/chapter-index.md` —— `.qiling/docs/README.md` 索引模板
+- `docs/CHAPTER-ARCHITECTURE.md` —— 章节留档架构说明
+- 章节生成跳接:`workflows/ship.md` 末尾追加"步骤 2.5 生成章节留档",自动调用 `/ql-chapter`
+
+### 章节产出布局
+
+```
+.qiling/                                    # 章节留档根目录
+├── README.md                               # 章节索引(门户型文档)
+└── docs/
+    └── chapters/
+        ├── chapter-01-user-center.md       # 第 1 章
+        ├── chapter-02-order-center.md      # 第 2 章
+        └── chapter-NN-*.md                 # ...更多
+```
+
+### 章节文件结构
+
+- §一 **API 详细文档**(端点 + schema + 错误码 + 使用示例:curl/TS/Python)
+- §二 **开发流程留档**(阶段时序图 + build 报告摘要 + git 历史)
+- §三 **与上一章节对比**(新增/修改/删除的 API + 迁移指南)
+- §四 **关联文档链接**
+- §五 **变更日志**
+
+### 触发时机
+
+- 默认:`/ql-ship` 完成后自动调用 `/ql-chapter`
+- 手动:`/ql-chapter` 独立触发
+- 模板变更后:`/ql-chapter --regenerate-all` 批量重生
+
+### 改进
+
+- `scripts/validate.mjs` 同步:`expectedCommands` 增加 `ql-chapter`、`requiredWorkflows` 增加 `chapter.md`、`requiredTemplates` 增加 `chapter.md` 与 `chapter-index.md`
+- `scripts/flow-verify.mjs` 扩展:新增 8 项章节生成门控(章节 ID、§一/§二结构、索引链接等),从 12/12 提升至 **20/20**
+
+### 版本号
+
+- `package.json`:0.3.0 → 0.4.0
+- `capabilities/zcode/plugin.json`:0.3.0 → 0.4.0
+- `capabilities/zcode/capability.json`:0.3.0 → 0.4.0,engines.gsd:>=0.3.0 → >=0.4.0
+
 ## [0.3.0] - 2026-08-28
 
 ### 重大变更

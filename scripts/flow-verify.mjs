@@ -198,6 +198,61 @@ const prBody = `## 实现 [从 OpenAPI 提取的功能集]
 writeFileSync(join(SANDBOX, '.planning/build/pr-body.md'), prBody);
 ok('ship 产出:PR body 已生成');
 
+// === 阶段 3.5:ql-chapter(章节留档,ship 后自动) ===
+console.log('\n═══ 阶段 3.5:ql-chapter(章节留档生成)═══');
+
+mkdirSync(join(SANDBOX, '.qiling/docs/chapters'), { recursive: true });
+
+// 模拟章节文件
+const chapterFile = `---
+chapter_id: "chapter-01"
+title: "演示项目"
+phase: 1
+generated_at: "2026-08-28T15:39:02Z"
+generated_by: "器灵工作流 v0.4.0"
+pr_url: "https://github.com/075dev/demo/pull/1"
+status: "shipped"
+---
+
+# 第 1 章 · 演示项目
+
+## 章节摘要
+- 端点数:2
+- 事件数:1
+
+## 一、本章节交付的 API
+| GET | /resources | 列出资源 |
+| GET | /resources/{id} | 单个资源 |
+
+## 二、开发流程留档
+- 阶段 1 讨论:完成
+- 阶段 2 骨架:完成(2/2 端点)
+- 阶段 3 填充:完成(mocks 替换 100%)
+- 阶段 4 验证:passed
+- 阶段 5 交付:PR 已创建
+`;
+writeFileSync(join(SANDBOX, '.qiling/docs/chapters/chapter-01-demo.md'), chapterFile);
+
+if (chapterFile.includes('chapter_id: "chapter-01"')) ok('章节:chapter_id 字段');
+if (chapterFile.includes('## 一、本章节交付的 API')) ok('章节:含 §一 API 文档');
+if (chapterFile.includes('## 二、开发流程留档')) ok('章节:含 §二 流程留档');
+if (chapterFile.includes('## 章节摘要')) ok('章节:含摘要');
+
+// 模拟索引文件
+const indexFile = `# 演示项目 · 章节文档
+
+## 章节列表
+| 章节 | 标题 | 状态 | API 数 |
+| [chapter-01](./chapters/chapter-01-demo.md) | 演示项目 | ✅ shipped | 2 |
+`;
+writeFileSync(join(SANDBOX, '.qiling/docs/README.md'), indexFile);
+
+if (indexFile.includes('## 章节列表')) ok('索引:含章节列表');
+if (indexFile.includes('chapter-01')) ok('索引:链接到 chapter-01');
+
+ok('章节产出:.qiling/docs/chapters/chapter-NN-*.md 已生成');
+ok('章节产出:.qiling/docs/README.md 索引已生成');
+
 // 清理
 if (existsSync(SANDBOX)) rmSync(SANDBOX, { recursive: true, force: true });
 

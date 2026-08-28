@@ -60,7 +60,7 @@ const plugin = readJson('capabilities/zcode/plugin.json');
 check(plugin !== null, 'capabilities/zcode/plugin.json 必须存在');
 
 // 4. commands/ 与 skills/ 一致性
-const expectedCommands = ['ql-discuss', 'ql-build', 'ql-ship'];
+const expectedCommands = ['ql-discuss', 'ql-build', 'ql-ship', 'ql-chapter'];
 const commandFiles = listFiles('commands', '.md');
 console.log(`  → 发现 ${commandFiles.length} 个 commands`);
 
@@ -78,12 +78,13 @@ for (const cmd of expectedCommands) {
   }
 }
 
-// 5. workflows/ 必须存在 4 个核心文件
+// 5. workflows/ 必须存在 5 个核心文件(讨论/骨架/填充/交付/章节)
 const requiredWorkflows = [
   'discuss.md',
   'build-skeleton.md',
   'build-fill.md',
-  'ship.md'
+  'ship.md',
+  'chapter.md'
 ];
 
 const workflowFiles = listFiles('workflows', '.md');
@@ -120,7 +121,10 @@ const requiredTemplates = [
   'build-report.md',
   'wave-report.md',
   'verification.md',
-  'config.json'
+  'config.json',
+  'config-schema.json',
+  'chapter.md',
+  'chapter-index.md'
 ];
 
 const templateFiles = listFiles('templates', '');

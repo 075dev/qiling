@@ -64,12 +64,29 @@ EOF
 gh pr create --title "feat: 实现 [功能集]" --body "$PR_BODY"
 ```
 
+## 步骤 2.5: 生成章节留档(自动)
+
+PR 创建成功后,自动跳转到 `workflows/chapter.md`,生成:
+
+- `.qiling/docs/chapters/chapter-NN-<slug>.md`(本章节 API + 流程文档)
+- `.qiling/docs/README.md`(章节索引)
+
+```bash
+# 章节生成(由 /ql-ship 自动触发)
+echo "📝 生成章节文档..."
+# 加载并执行 workflows/chapter.md
+```
+
+详见 `workflows/chapter.md`。
+
 ## 步骤 3: 更新 STATE
 
 ```yaml
 ---
 status: shipped
-last_activity: shipped PR
+last_activity: shipped PR + chapter generated
+chapter_id: chapter-NN
+docs_path: .qiling/docs/
 current_phase: 1_of_N_done
 ---
 ```
