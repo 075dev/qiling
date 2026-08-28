@@ -240,6 +240,12 @@ check(existsSync(join(ROOT, 'README.md')), 'README.md 必须存在');
 check(existsSync(join(ROOT, 'docs/ARCHITECTURE.md')), 'docs/ARCHITECTURE.md 必须存在');
 check(existsSync(join(ROOT, 'docs/WALKING-SKELETON.md')), 'docs/WALKING-SKELETON.md 必须存在');
 check(existsSync(join(ROOT, 'docs/PARALLELIZATION.md')), 'docs/PARALLELIZATION.md 必须存在');
+check(existsSync(join(ROOT, 'docs/CHAPTER-ARCHITECTURE.md')), 'docs/CHAPTER-ARCHITECTURE.md 必须存在');
+
+// 11. 验证脚本
+check(existsSync(join(ROOT, 'scripts/chapter-render.mjs')), 'scripts/chapter-render.mjs 必须存在(端到端章节渲染)');
+check(existsSync(join(ROOT, 'scripts/flow-verify.mjs')), 'scripts/flow-verify.mjs 必须存在');
+check(existsSync(join(ROOT, 'scripts/jsonschema-check.mjs')), 'scripts/jsonschema-check.mjs 必须存在');
 
 // 总结
 console.log('\n📊 验证结果:');

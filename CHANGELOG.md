@@ -5,6 +5,57 @@
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.4.1] - 2026-08-28
+
+### 新增:端到端章节渲染验证
+
+`0.4.0` 引入了章节留档模板与工作流,但仅由模板字段名检查覆盖,缺乏"OpenAPI → 章节"的真实渲染证据。本版本补上端到端渲染管线与 7 项断言,使"详细 API"与"详细开发流程"两项能力要求可证。
+
+### 新增
+
+- `scripts/chapter-render.mjs` —— 真实章节渲染器:
+  - 读取 `templates/openapi-spec.yaml`(真实 OpenAPI)解析 paths / schemas / 错误响应
+  - 模拟 `.planning/build/{skeleton,fill,verification}-report.md` 与 `STATE.md`、`git-log.txt`
+  - 产出 `.tmp/chapter-render/chapter-01-demo.md`(271 行/6.2 KB)与 `.tmp/chapter-render/README.md`(31 行)
+  - 自动生成 curl / TypeScript / Python 使用示例(从真实 OpenAPI 路径)
+  - 端点表、数据模型、错误码表、流程留档均从真实数据填充
+
+### 7 项断言
+
+| # | 断言 | 真实结果 |
+|---|------|----------|
+| 1 | 端点表行数 ≥ 1 | 5 行(2 个 GET /resources 路径 + 3 个 /resources/{id} 方法) |
+| 2 | curl 示例非占位 | 5 条全部含真实路径(`/resources`、`/resources/{id}`)|
+| 3 | 数据模型 ≥ 1 | 8 个 schema(Resource / ResourceCreate / ResourceUpdate / Error / 4 错误响应) |
+| 4 | 错误码 ≥ 1 | 4 个错误响应(BadRequest / NotFound / Conflict / InternalError) |
+| 5 | 流程留档含真实波次 | 波次数 = 1(从 skeleton-report 提取) |
+| 6 | 索引含章节链接 | `./chapter-01-demo.md` 链接存在 |
+| 7 | 无未替换占位符 | `[N]` / `[M]` / `[K]` / `[hash]` 等 0 处 |
+
+### npm scripts 接入
+
+- `npm run chapter:render` —— 端到端章节渲染
+- `npm run verify:flow` —— 三步循环模拟
+- `npm run verify:schema` —— config.json schema 校验
+
+### 改进
+
+- `scripts/validate.mjs` 同步:新增 `scripts/{chapter-render,flow-verify,jsonschema-check}.mjs` 存在性校验 + `docs/CHAPTER-ARCHITECTURE.md` 存在性校验
+- `package.json` 同步:版本号 0.4.0 → 0.4.1,新增 4 个 npm scripts
+
+### 验证证据
+
+| 验证 | 结果 |
+|------|------|
+| `npm run validate` | ✅ 0 错误 1 警告(三步循环语义提示) |
+| `npm run verify:flow` | ✅ 20/20 通过 |
+| `npm run chapter:render` | ✅ **9/9 通过**(端到端) |
+| `npm run verify:schema` | ✅ 通过 |
+
+### 版本号
+
+- `package.json`:0.4.0 → 0.4.1
+
 ## [0.4.0] - 2026-08-28
 
 ### 新增功能:章节留档(`/ql-chapter`)
