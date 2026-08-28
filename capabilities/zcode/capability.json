@@ -1,0 +1,103 @@
+{
+  "id": "zcode",
+  "role": "runtime",
+  "version": "0.3.0",
+  "title": "Zcode",
+  "description": "Zcode (Z.ai) 桌面 Agentic 开发环境——Claude 风格的嵌套 skills,斜杠命令,命名子智能体,原生 MCP 传输;声明式插件清单,profile-marker 安装;tier-2 社区支持。",
+  "tier": "core",
+  "requires": [],
+  "engines": {
+    "gsd": ">=0.3.0"
+  },
+  "runtime": {
+    "configHome": {
+      "kind": "dot-home",
+      "name": ".zcode",
+      "env": [
+        "ZCODE_CONFIG_DIR"
+      ]
+    },
+    "localConfigDir": ".planning",
+    "configFormat": "none",
+    "artifactLayout": {
+      "global": [
+        {
+          "kind": "skills",
+          "destSubpath": "skills",
+          "prefix": "ql-",
+          "nesting": "nested",
+          "recursive": false,
+          "converter": "convertClaudeCommandToClaudeSkill"
+        },
+        {
+          "kind": "commands",
+          "destSubpath": "commands",
+          "prefix": "ql-",
+          "nesting": "flat",
+          "recursive": false,
+          "converter": null
+        },
+        {
+          "kind": "agents",
+          "destSubpath": "agents",
+          "prefix": "ql-",
+          "nesting": "flat",
+          "recursive": false,
+          "converter": "convertClaudeAgentToZcodeAgent"
+        }
+      ],
+      "local": [
+        {
+          "kind": "templates",
+          "destSubpath": ".planning/templates",
+          "prefix": "ql-",
+          "nesting": "flat",
+          "recursive": false,
+          "converter": null
+        },
+        {
+          "kind": "state",
+          "destSubpath": ".planning",
+          "prefix": "ql_",
+          "nesting": "flat",
+          "recursive": false,
+          "converter": null
+        }
+      ]
+    },
+    "triggerPrecedence": [
+      "skills",
+      "commands"
+    ],
+    "commandStyle": "slash-hyphen",
+    "hooksSurface": "none",
+    "sandboxTier": "none",
+    "supportTier": 2,
+    "installSurface": "declarative-full",
+    "writesSharedSettings": false,
+    "permissionWriter": null,
+    "extendedHookEvents": [],
+    "hostIntegration": {
+      "embeddingMode": "declarative",
+      "commandSurface": "slash-file",
+      "dispatch": {
+        "namedDispatch": true,
+        "nested": "undocumented",
+        "maxDepth": "undocumented",
+        "background": false,
+        "subagentToolkit": "full",
+        "backgroundDispatch": false,
+        "isolation": "none"
+      },
+      "modelMode": "passive",
+      "hookBus": "host",
+      "stateIO": "filesystem",
+      "transport": "mcp",
+      "runtime": "electron",
+      "effortSurface": "undocumented"
+    },
+    "hostBehaviors": {
+      "skipSharedHooksInstall": true
+    }
+  }
+}

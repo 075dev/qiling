@@ -1,0 +1,72 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://qiling.dev/schemas/config-schema.json",
+  "title": "器灵工作流配置",
+  "description": "器灵工作流插件的运行时配置 schema,所有字段必须符合此定义。",
+  "type": "object",
+  "required": ["mode", "build", "parallelization", "ship"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "mode": {
+      "type": "string",
+      "enum": ["interactive", "auto"],
+      "description": "工作流运行模式"
+    },
+    "response_language": {
+      "type": "string",
+      "description": "AI 回复语言",
+      "default": "zh-CN"
+    },
+    "discussion": {
+      "type": "object",
+      "properties": {
+        "auto_mode": { "type": "boolean", "default": false },
+        "min_topics_covered": { "type": "integer", "minimum": 1, "maximum": 10, "default": 4 },
+        "require_openapi": { "type": "boolean", "default": true },
+        "require_event_flow": { "type": "boolean", "default": true },
+        "openapi_validation": { "type": "boolean", "default": true }
+      }
+    },
+    "build": {
+      "type": "object",
+      "required": ["skeleton_first", "atomic_commits", "auto_verify"],
+      "properties": {
+        "skeleton_first": { "type": "boolean" },
+        "atomic_commits": { "type": "boolean" },
+        "auto_verify": { "type": "boolean" },
+        "stop_on_verify_failure": { "type": "boolean" }
+      }
+    },
+    "parallelization": {
+      "type": "object",
+      "required": ["enabled", "max_concurrent", "isolation", "merge_strategy"],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "max_concurrent": { "type": "integer", "minimum": 1, "maximum": 32 },
+        "isolation": { "type": "string", "enum": ["worktree", "branch", "none"] },
+        "auto_merge": { "type": "boolean" },
+        "fail_fast": { "type": "boolean" },
+        "fallback_to_sequential": { "type": "boolean" },
+        "wave_timeout_minutes": { "type": "integer", "minimum": 1 },
+        "worker_timeout_minutes": { "type": "integer", "minimum": 1 },
+        "worker_retry_count": { "type": "integer", "minimum": 0, "maximum": 5 },
+        "merge_strategy": { "type": "string", "enum": ["merge", "rebase", "squash"] }
+      }
+    },
+    "ship": {
+      "type": "object",
+      "properties": {
+        "auto_pr": { "type": "boolean" },
+        "require_verification_passed": { "type": "boolean" },
+        "block_on_dirty_tree": { "type": "boolean" }
+      }
+    },
+    "safety": {
+      "type": "object",
+      "properties": {
+        "always_confirm_destructive": { "type": "boolean" },
+        "always_confirm_external_services": { "type": "boolean" }
+      }
+    }
+  }
+}
