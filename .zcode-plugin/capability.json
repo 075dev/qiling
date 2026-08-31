@@ -1,7 +1,7 @@
 {
   "id": "zcode",
   "role": "runtime",
-  "version": "0.5.2",
+  "version": "0.5.3",
   "title": "Zcode",
   "description": "Zcode (Z.ai) 桌面 Agentic 开发环境——Claude 风格的嵌套 skills,斜杠命令,命名子智能体,原生 MCP 传输;声明式插件清单,profile-marker 安装;tier-2 社区支持。",
   "tier": "core",

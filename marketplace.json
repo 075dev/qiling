@@ -1,0 +1,38 @@
+{
+  "$schema": "https://zcode.dev/schemas/marketplace.schema.json",
+  "name": "qiling-marketplace",
+  "description": "器灵工作流(Qiling)插件市场——讨论驱动 + Walking Skeleton + 波次并行的 Zcode 工作流插件。",
+  "owner": {
+    "name": "ZcodePlugin",
+    "url": "https://github.com/075dev/qiling"
+  },
+  "plugins": [
+    {
+      "name": "qiling",
+      "source": "./",
+      "description": "讨论驱动的 Zcode 工作流插件(器灵)。三步循环:讨论 → 构建 → 交付。新增章节留档(/ql-chapter)与文档树生成(/ql-docsmap)。",
+      "version": "0.5.3",
+      "author": {
+        "name": "ZcodePlugin",
+        "url": "https://github.com/075dev/qiling"
+      },
+      "homepage": "https://github.com/075dev/qiling",
+      "repository": "https://github.com/075dev/qiling",
+      "license": "MIT",
+      "keywords": [
+        "zcode",
+        "qiling",
+        "器灵",
+        "gsd",
+        "workflow",
+        "walking-skeleton",
+        "openapi",
+        "mermaid",
+        "discussion-driven",
+        "spec-driven-development",
+        "docsmap"
+      ],
+      "category": "workflow"
+    }
+  ]
+}

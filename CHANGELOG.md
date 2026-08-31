@@ -5,6 +5,62 @@
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.5.3] - 2026-08-31
+
+### 修复:Zcode 插件市场 manifest 缺失
+
+**问题:** `zcode plugin install 075dev/qiling` 报错 `Marketplace manifest not found in git repo`。
+
+**根因:** Zcode 加载 git 仓库作为插件源时,要求仓库**根目录**有 `marketplace.json`(参照 claude-plugins-official 与 zcode-plugins-official 的官方格式)。本仓库之前只有 `.zcode-plugin/{plugin,capability}.json`,缺少根级 `marketplace.json`。
+
+### 新增
+
+- `marketplace.json`(仓库根)—— Zcode 插件市场 manifest:
+  - `name`: `qiling-marketplace`
+  - `owner`: 指向 075dev
+  - `plugins[]`: 1 个 plugin(`qiling`,`source: "./"`)
+- `.zcode-plugin/marketplace.json`(镜像副本,部分运行时可能从隐藏目录读取)
+
+### 改进
+
+- `scripts/validate.mjs` 同步:新增 `marketplace.json` 存在性 + 必填字段校验(name/plugins[0].name/source)
+- `package.json` / `.zcode-plugin/plugin.json` / `.zcode-plugin/capability.json` 版本号 0.5.2 → 0.5.3
+
+### marketplace.json 关键字段
+
+```json
+{
+  "name": "qiling-marketplace",
+  "owner": { "name": "ZcodePlugin", "url": "..." },
+  "plugins": [
+    {
+      "name": "qiling",
+      "source": "./",   // 本地路径模式(自托管仓库)
+      "version": "0.5.3",
+      "category": "workflow",
+      ...
+    }
+  ]
+}
+```
+
+### 安装(修复后)
+
+```bash
+zcode plugin install 075dev/qiling
+# Zcode 读取 marketplace.json → plugins[0].source = "./" → 加载整个仓库
+```
+
+### 验证证据
+
+| 验证 | 结果 |
+|------|------|
+| `npm run validate` | ✅ 0 错误 |
+| `npm run verify:flow` | ✅ 20/20 |
+| `npm run chapter:render` | ✅ 9/9 |
+| `npm run docsmap` | ✅ 9/9 |
+| `npm run verify:schema` | ✅ 通过 |
+
 ## [0.5.2] - 2026-08-31
 
 ### 重大变更:重构为纯 Zcode 插件格式

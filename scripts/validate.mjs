@@ -59,6 +59,19 @@ check(capability?.id === 'zcode', 'capability id 必须是 zcode');
 const plugin = readJson('.zcode-plugin/plugin.json');
 check(plugin !== null, '.zcode-plugin/plugin.json 必须存在');
 
+// 3a. marketplace.json(Zcode 插件市场识别)
+const marketplace = readJson('marketplace.json');
+check(marketplace !== null, 'marketplace.json 必须存在(Zcode 插件市场 manifest)');
+if (marketplace) {
+  check(typeof marketplace.name === 'string', 'marketplace.json 必须有 name 字段');
+  check(Array.isArray(marketplace.plugins) && marketplace.plugins.length >= 1, 'marketplace.json 必须有至少 1 个 plugin');
+  if (marketplace.plugins && marketplace.plugins.length >= 1) {
+    const p = marketplace.plugins[0];
+    check(p.name, 'marketplace.json plugins[0] 必须有 name');
+    check(p.source === './' || (p.source && p.source.source), 'marketplace.json plugins[0] 必须有 source("./" 或 {source: "..."} 对象)');
+  }
+}
+
 // 4. commands/ 与 skills/ 一致性
 const expectedCommands = ['ql-discuss', 'ql-build', 'ql-ship', 'ql-chapter', 'ql-docsmap'];
 const commandFiles = listFiles('commands', '.md');
@@ -242,6 +255,7 @@ check(existsSync(join(ROOT, 'docs/ARCHITECTURE.md')), 'docs/ARCHITECTURE.md 必�
 check(existsSync(join(ROOT, 'docs/WALKING-SKELETON.md')), 'docs/WALKING-SKELETON.md 必须存在');
 check(existsSync(join(ROOT, 'docs/PARALLELIZATION.md')), 'docs/PARALLELIZATION.md 必须存在');
 check(existsSync(join(ROOT, 'docs/CHAPTER-ARCHITECTURE.md')), 'docs/CHAPTER-ARCHITECTURE.md 必须存在');
+check(existsSync(join(ROOT, 'marketplace.json')), 'marketplace.json 必须存在(Zcode 插件市场 manifest)');
 
 // 11. 验证脚本
 check(existsSync(join(ROOT, 'scripts/chapter-render.mjs')), 'scripts/chapter-render.mjs 必须存在(端到端章节渲染)');
