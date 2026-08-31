@@ -1,8 +1,8 @@
 {
   "name": "qiling",
   "displayName": "器灵 Zcode 工作流",
-  "version": "0.4.0",
-  "description": "讨论驱动的 Zcode 工作流插件(器灵)。讨论出 OpenAPI + 事件流程,AI 自动构建 Walking Skeleton 并填充,最后交付。",
+  "version": "0.5.2",
+  "description": "讨论驱动的 Zcode 工作流插件(器灵)。三步循环:讨论 → 构建 → 交付。新增章节留档(/ql-chapter)与文档树生成(/ql-docsmap)。",
   "author": {
     "name": "ZcodePlugin",
     "url": "https://github.com/075dev/qiling"
@@ -13,17 +13,19 @@
   "keywords": [
     "zcode",
     "qiling",
+    "器灵",
     "gsd",
     "workflow",
     "walking-skeleton",
     "openapi",
     "mermaid",
     "discussion-driven",
-    "spec-driven-development"
+    "spec-driven-development",
+    "docsmap"
   ],
-  "capability": "./capability.json",
-  "commands": "./commands/",
+  "category": "workflow",
   "skills": "./skills/",
+  "commands": "./commands/",
   "agents": "./agents/",
   "workflows": "./workflows/",
   "templates": "./templates/"

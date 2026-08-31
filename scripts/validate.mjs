@@ -4,8 +4,8 @@
  *
  * 验证:
  * - package.json 合法
- * - capabilities/zcode/capability.json 合法
- * - capabilities/zcode/plugin.json 合法
+ * - .zcode-plugin/capability.json 合法
+ * - .zcode-plugin/plugin.json 合法
  * - commands/ 与 skills/ 对应
  * - workflows/ 存在
  * - agents/ 与 templates/ 存在(coordinator + worker)
@@ -51,13 +51,13 @@ check(pkg?.name, 'package.json 必须有 name');
 check(pkg?.version, 'package.json 必须有 version');
 
 // 2. capability.json
-const capability = readJson('capabilities/zcode/capability.json');
-check(capability !== null, 'capabilities/zcode/capability.json 必须存在');
+const capability = readJson('.zcode-plugin/capability.json');
+check(capability !== null, '.zcode-plugin/capability.json 必须存在');
 check(capability?.id === 'zcode', 'capability id 必须是 zcode');
 
 // 3. plugin.json
-const plugin = readJson('capabilities/zcode/plugin.json');
-check(plugin !== null, 'capabilities/zcode/plugin.json 必须存在');
+const plugin = readJson('.zcode-plugin/plugin.json');
+check(plugin !== null, '.zcode-plugin/plugin.json 必须存在');
 
 // 4. commands/ 与 skills/ 一致性
 const expectedCommands = ['ql-discuss', 'ql-build', 'ql-ship', 'ql-chapter', 'ql-docsmap'];

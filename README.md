@@ -4,6 +4,31 @@
 > **品牌**:器灵(`qiling`,`ql-*` 命令前缀)
 > **核心**:讨论出 API 和事件流程 → AI **波次并行**构建 Walking Skeleton → 填充真实逻辑 → 自动验证 → 交付。
 
+## 安装
+
+```bash
+# 方式 1:本地安装(开发或私有使用)
+zcode plugin install 075dev/qiling
+
+# 方式 2:从 GitHub 直接安装
+zcode plugin install https://github.com/075dev/qiling
+
+# 方式 3:克隆后手动安装
+git clone https://github.com/075dev/qiling
+cd qiling
+zcode plugin install .
+```
+
+安装后可用命令:
+
+```bash
+/ql-docsmap    # 文档树生成(项目初始化)
+/ql-discuss    # 讨论:产出 OpenAPI + Mermaid 流程图
+/ql-build      # 构建:波次并行 + Walking Skeleton + 填充
+/ql-ship       # 交付:推送 PR + 章节留档
+/ql-chapter    # 章节留档生成(独立触发)
+```
+
 ---
 
 ## 核心理念
@@ -132,7 +157,9 @@ zcode-gsd-workflow/(器灵 qiling)
 │   ├── wave-report.md         # 波次报告(每个 worker 一份)
 │   ├── verification.md
 │   └── config.json
-├── capabilities/zcode/
+├── .zcode-plugin/                # Zcode 插件市场元数据
+│   ├── plugin.json              # 插件清单
+│   └── capability.json          # 运行时适配
 ├── docs/
 │   ├── ARCHITECTURE.md
 │   ├── WALKING-SKELETON.md

@@ -5,6 +5,54 @@
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.5.2] - 2026-08-31
+
+### 重大变更:重构为纯 Zcode 插件格式
+
+**问题:** 仓库原使用 GSD Core 的 `capabilities/zcode/{plugin,capability}.json` 嵌套格式,Zcode 插件市场**无法识别**(Zcode 期望 `.zcode-plugin/plugin.json` 作为市场元数据入口)。
+
+**修复:** 迁移至纯 Zcode 插件格式:
+
+| 项 | 旧路径 | 新路径 |
+|----|--------|--------|
+| 插件清单 | `capabilities/zcode/plugin.json` | `.zcode-plugin/plugin.json` |
+| 运行时配置 | `capabilities/zcode/capability.json` | `.zcode-plugin/capability.json` |
+| npm main | `capabilities/zcode/plugin.json` | `.zcode-plugin/plugin.json` |
+| engines | `gsd:>=0.4.0` | `ql:>=0.5.0` |
+
+### 新增
+
+- `.zcode-plugin/plugin.json` —— Zcode 插件市场元数据(name, version, author, license, keywords, skills, commands, agents, workflows, templates, category=workflow)
+- `.zcode-plugin/capability.json` —— 运行时适配配置(id=zcode, role=runtime, artifactLayout 等)
+
+### 改进
+
+- `scripts/validate.mjs` 同步:`capabilities/zcode/*` → `.zcode-plugin/*`
+- `package.json` main 字段同步
+- `README.md` 顶部新增"安装"段(3 种安装方式 + 5 个命令清单)
+- `docs/ARCHITECTURE.md` 目录树同步
+- `CHANGELOG.md` 历史项标注已迁移
+
+### 删除
+
+- `capabilities/zcode/plugin.json`(已迁移)
+- `capabilities/zcode/capability.json`(已迁移)
+- `capabilities/` 目录(整个删除)
+
+### 安装指引
+
+```bash
+zcode plugin install 075dev/qiling
+# 或
+zcode plugin install https://github.com/075dev/qiling
+```
+
+### 版本号
+
+- `package.json`:0.5.0 → 0.5.2
+- `.zcode-plugin/plugin.json`:0.5.0 → 0.5.2
+- `.zcode-plugin/capability.json`:0.4.0 → 0.5.2
+
 ## [0.5.0] - 2026-08-28
 
 ### 新增功能:`/ql-docsmap` 文档树生成
@@ -171,8 +219,8 @@
 ### 版本号
 
 - `package.json`:0.3.0 → 0.4.0
-- `capabilities/zcode/plugin.json`:0.3.0 → 0.4.0
-- `capabilities/zcode/capability.json`:0.3.0 → 0.4.0,engines.gsd:>=0.3.0 → >=0.4.0
+- `capabilities/zcode/plugin.json`(已迁移至 `.zcode-plugin/plugin.json`):0.3.0 → 0.4.0
+- `capabilities/zcode/capability.json`(已迁移至 `.zcode-plugin/capability.json`):0.3.0 → 0.4.0,engines.gsd:>=0.3.0 → >=0.4.0
 
 ## [0.3.0] - 2026-08-28
 

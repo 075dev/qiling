@@ -94,7 +94,9 @@ qiling/(器灵 v0.3.0,目录名仍为 zcode-gsd-workflow)
 │   ├── wave-report.md                 # 波次报告(协调器-worker 契约)
 │   ├── verification.md
 │   └── config.json
-├── capabilities/zcode/                # Zcode 适配
+├── .zcode-plugin/                # Zcode 插件市场元数据
+│   ├── plugin.json
+│   └── capability.json
 ├── docs/
 │   ├── ARCHITECTURE.md                # 本文档
 │   ├── WALKING-SKELETON.md            # Walking Skeleton 方法论
