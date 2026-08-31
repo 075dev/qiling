@@ -5,6 +5,53 @@
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.5.4] - 2026-08-31
+
+### 修复:`/ql-docsmap` 重复运行产生同名文档
+
+**问题:** 在本项目中连跑两次 `npm run docsmap`,产生两个 slug 完全相同、仅章节 ID 不同的文档(如 `chapter-01-qiling-zcode-workflow.md` 与 `chapter-02-qiling-zcode-workflow.md`)。docsmap 是项目初始化入口,每个项目只应该有一份快照。
+
+**根因:** 旧脚本逻辑"现有最大章节号 + 1"——无 slug 去重,所以每次都生成新 ID。
+
+**附带 Bug:** README 中已存在的 `docsmap_init: true` 章节被错误标记为 `/ql-chapter`(index 更新只判断 ID,不读 frontmatter)。
+
+### 新行为
+
+| 触发 | 行为 |
+|------|------|
+| `npm run docsmap`(无 flag) | 若同 slug 章节已存在,**报错退出**(exit 1) |
+| `npm run docsmap -- --force` | 覆盖现有同 slug 章节(保留 ID,只重写内容) |
+
+### 错误信息
+
+```
+❌ 章节已存在: chapter-01-qiling-zcode-workflow.md
+   本命令是项目初始化入口,每个项目只生成一份文档快照。
+   若要重新扫描(项目结构大改后),加 --force:
+     npm run docsmap -- --force
+```
+
+### 改进
+
+- `scripts/docsmap.mjs`:
+  - 新增 `--force` flag 解析
+  - 按 slug 匹配已存在章节(替代纯 ID 自增)
+  - 拒绝重复时给清晰指引
+- README 来源判断修复:读每个章节 frontmatter 的 `docsmap_init: true`,准确标记 `/ql-docsmap` 或 `/ql-chapter`
+
+### 验证证据
+
+| 场景 | 结果 |
+|------|------|
+| `npm run docsmap`(首次) | ✅ 9/9 通过 |
+| `npm run docsmap`(重复) | ❌ **拒绝**(exit 1,无新文件生成) |
+| `npm run docsmap -- --force` | ✅ 9/9 通过,只覆盖 chapter-01 |
+| 最终 `.qiling/docs/chapters/` | **仅 1 个文件**(chapter-01) |
+
+### 版本号
+
+- `package.json` / `.zcode-plugin/{plugin,capability}.json` / `marketplace.json` (根+镜像):0.5.3 → 0.5.4
+
 ## [0.5.3] - 2026-08-31
 
 ### 修复:Zcode 插件市场 manifest 缺失

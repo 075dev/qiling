@@ -40,7 +40,12 @@ const ROOT = join(__dirname, '..');
 // === 参数解析 ===
 const args = process.argv.slice(2);
 const opts = {};
+const flags = new Set();
 for (let i = 0; i < args.length; i++) {
+  if (args[i] === '--force') {
+    flags.add('force');
+    continue;
+  }
   if (args[i].startsWith('--')) {
     opts[args[i].slice(2)] = args[i + 1];
     i++;
@@ -61,6 +66,7 @@ if (!PROJECT_NAME || PROJECT_NAME === 'unknown') {
 
 const EXPLICIT_CHAPTER_ID = opts['chapter-id'];
 const EXPLICIT_OUT = opts.out;
+const FORCE = flags.has('force');
 
 const errors = [];
 const passed = [];
@@ -158,15 +164,40 @@ const events = extractEvents();
 const chaptersDir = join(ROOT, '.qiling', 'docs', 'chapters');
 if (!existsSync(chaptersDir)) mkdirSync(chaptersDir, { recursive: true });
 
-let nextNum = 1;
-const existingChapters = readdirSync(chaptersDir).filter(f => /^chapter-\d+/.test(f));
-for (const f of existingChapters) {
-  const m = f.match(/chapter-(\d+)/);
-  if (m) nextNum = Math.max(nextNum, parseInt(m[1]) + 1);
-}
-const CHAPTER_ID = EXPLICIT_CHAPTER_ID || `chapter-${String(nextNum).padStart(2, '0')}`;
 const SLUG = PROJECT_NAME.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-const CHAPTER_FILE = EXPLICIT_OUT || join(chaptersDir, `${CHAPTER_ID}-${SLUG}.md`);
+
+// 按 slug 匹配已存在章节(docsmap 是初始化入口,每个项目只生成一份快照)
+const existingFiles = readdirSync(chaptersDir).filter(f => /^chapter-\d+.*\.md$/.test(f));
+const existingBySlug = existingFiles.find(f => f.endsWith(`-${SLUG}.md`));
+
+let CHAPTER_ID, CHAPTER_FILE;
+
+if (existingBySlug && !FORCE) {
+  // 默认拒绝重复:同 slug 章节已存在
+  console.error(`❌ 章节已存在: ${existingBySlug}`);
+  console.error(`   本命令是项目初始化入口,每个项目只生成一份文档快照。`);
+  console.error(`   若要重新扫描(项目结构大改后),加 --force:`);
+  console.error(`     npm run docsmap -- --force`);
+  console.error(`   或:`);
+  console.error(`     node scripts/docsmap.mjs --force`);
+  process.exit(1);
+}
+
+if (existingBySlug && FORCE) {
+  // --force:覆盖现有同 slug 章节(保留 ID,只重写内容)
+  CHAPTER_ID = existingBySlug.match(/^(chapter-\d+)/)[1];
+  CHAPTER_FILE = join(chaptersDir, existingBySlug);
+  console.log(`⚠️  --force:覆盖现有 ${existingBySlug}`);
+} else {
+  // 无冲突:找下一个可用 ID
+  let nextNum = 1;
+  for (const f of existingFiles) {
+    const m = f.match(/chapter-(\d+)/);
+    if (m) nextNum = Math.max(nextNum, parseInt(m[1]) + 1);
+  }
+  CHAPTER_ID = EXPLICIT_CHAPTER_ID || `chapter-${String(nextNum).padStart(2, '0')}`;
+  CHAPTER_FILE = EXPLICIT_OUT || join(chaptersDir, `${CHAPTER_ID}-${SLUG}.md`);
+}
 
 // === 步骤 6:渲染章节文件(与 ql-chapter 同 5 节结构) ===
 
@@ -191,7 +222,7 @@ status: "initialized"
 docsmap_init: true
 ---
 
-# 第 ${nextNum} 章 · ${PROJECT_NAME}(初始化)
+# 第 ${parseInt(CHAPTER_ID.replace('chapter-', ''))} 章 · ${PROJECT_NAME}(初始化)
 
 > **本文档由 \`/ql-docsmap\` 生成** —— 通过阅读项目目录结构,产出与 \`/ql-chapter\` 完全一致格式的初始化章节。
 > 进入开发流程后,新章节由 \`/ql-chapter\` 追加,本章节作为起点。
@@ -328,7 +359,12 @@ const newIndex = `# ${projectMeta.name} · 文档树
 
 | 章节 | 标题 | 状态 | 来源命令 | 生成时间 |
 |------|------|------|----------|----------|
-${chapterRows.map(c => `| [${c.id}](./chapters/${c.file}) | ${c.title} | ${c.status} | ${c.id === CHAPTER_ID ? '/ql-docsmap' : '/ql-chapter'} | ${c.generated} |`).join('\n')}
+${chapterRows.map(c => {
+  // 优先读 docsmap_init:true(章节文件里标记的来源)
+  const cContent = readFileSync(join(chaptersDir, c.file), 'utf8');
+  const source = /docsmap_init:\s*true/.test(cContent) ? '/ql-docsmap' : '/ql-chapter';
+  return `| [${c.id}](./chapters/${c.file}) | ${c.title} | ${c.status} | ${source} | ${c.generated} |`;
+}).join('\n')}
 
 ---
 
