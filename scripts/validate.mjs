@@ -73,7 +73,7 @@ if (marketplace) {
 }
 
 // 4. commands/ 与 skills/ 一致性
-const expectedCommands = ['ql-discuss', 'ql-build', 'ql-ship', 'ql-chapter', 'ql-docsmap'];
+const expectedCommands = ['ql-design', 'ql-build', 'ql-deliver', 'ql-doc', 'ql-scan', 'ql-fix', 'ql-add', 'ql-next'];
 const commandFiles = listFiles('commands', '.md');
 console.log(`  → 发现 ${commandFiles.length} 个 commands`);
 
@@ -91,14 +91,18 @@ for (const cmd of expectedCommands) {
   }
 }
 
-// 5. workflows/ 必须存在 6 个核心文件(讨论/骨架/填充/交付/章节/docsmap)
+// 5. workflows/ 必须存在核心文件(方案/骨架/填充/评审/交付/章节/扫描/修复/加功能/下一步入口)
 const requiredWorkflows = [
-  'discuss.md',
+  'design.md',
   'build-skeleton.md',
   'build-fill.md',
-  'ship.md',
-  'chapter.md',
-  'docsmap.md'
+  'review.md',
+  'deliver.md',
+  'doc.md',
+  'scan.md',
+  'fix.md',
+  'add.md',
+  'next.md'
 ];
 
 const workflowFiles = listFiles('workflows', '.md');
@@ -110,11 +114,12 @@ for (const wf of requiredWorkflows) {
   }
 }
 
-// 6. agents/ 必须存在 3 个核心子智能体(讨论 + 协调 + worker)
+// 6. agents/ 必须存在 4 个核心子智能体(方案引导 + 协调 + worker + 独立评审)
 const requiredAgents = [
-  'ql-discuss-coach.md',
+  'ql-design-coach.md',
   'ql-builder-coordinator.md',
-  'ql-builder-worker.md'
+  'ql-builder-worker.md',
+  'ql-reviewer.md'
 ];
 
 const agentFiles = listFiles('agents', '.md');
@@ -135,6 +140,9 @@ const requiredTemplates = [
   'build-report.md',
   'wave-report.md',
   'verification.md',
+  'review.md',
+  'bugfix-report.md',
+  'constitution.md',
   'config.json',
   'config-schema.json',
   'chapter.md',
@@ -232,19 +240,19 @@ if (capability?.runtime?.artifactLayout) {
   }
 }
 
-// 9c. commands 的 requires 反向依赖:讨论不应依赖构建
+// 9c. commands 的 requires 反向依赖:方案不应依赖构建
 for (const cmd of commandFiles) {
   const content = readFileSync(join(ROOT, 'commands', cmd), 'utf8');
   const requiresMatch = content.match(/requires:\s*\[([^\]]+)\]/);
   if (requiresMatch) {
     const requires = requiresMatch[1].split(',').map(s => s.trim());
-    // discuss 不应依赖 build
-    if (cmd === 'ql-discuss.md' && requires.includes('ql-build')) {
-      errors.push(`commands/${cmd} 反向依赖:讨论不应依赖 ql-build`);
+    // design 不应依赖 build
+    if (cmd === 'ql-design.md' && requires.includes('ql-build')) {
+      errors.push(`commands/${cmd} 反向依赖:方案(design)不应依赖构建(ql-build)`);
     }
-    // build 不应依赖 ship(避免循环)
-    if (cmd === 'ql-build.md' && requires.includes('ql-ship')) {
-      warnings.push(`commands/${cmd} 依赖 ql-ship,会形成 discuss→build→ship 链;确认是否符合预期`);
+    // build 不应依赖 deliver(避免循环)
+    if (cmd === 'ql-build.md' && requires.includes('ql-deliver')) {
+      warnings.push(`commands/${cmd} 依赖 ql-deliver,会形成 design→build→deliver 链;确认是否符合预期`);
     }
   }
 }
@@ -281,11 +289,11 @@ if (warnings.length > 0) {
 if (errors.length === 0) {
   console.log('\n✅ 骨架验证通过!');
   console.log('\n📋 设计概览:');
-  console.log(`  • 核心循环:3 步(讨论 → 构建 → 交付)`);
-  console.log(`  • 命令:${commandFiles.length} 个(ql-discuss、ql-build、ql-ship)`);
+  console.log(`  • 核心循环:3 步(方案 → 构建 → 交付)+ 旁路(修 Bug / 加功能)`);
+  console.log(`  • 命令:${commandFiles.length} 个(ql-design、ql-build、ql-deliver、ql-doc、ql-scan、ql-fix、ql-add、ql-next)`);
   console.log(`  • 工作流:${workflowFiles.length} 个`);
-  console.log(`  • 子智能体:${agentFiles.length} 个(discuss-coach + coordinator + worker)`);
-  console.log(`  • 工件模板:${templateFiles.length} 个(OpenAPI + Mermaid 流程图 + 波次报告)`);
+  console.log(`  • 子智能体:${agentFiles.length} 个(design-coach + coordinator + worker + reviewer)`);
+  console.log(`  • 工件模板:${templateFiles.length} 个(OpenAPI + Mermaid 流程图 + 波次报告 + 评审/修 Bug 报告)`);
   console.log(`  • 方法:Walking Skeleton(骨架先行)`);
   console.log(`  • 并行:全自动波次并行 + Git Worktree 隔离`);
   if (config?.parallelization) {

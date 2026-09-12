@@ -1,5 +1,5 @@
 ---
-name: ql-chapter
+name: ql-doc
 description: "章节留档生成——基于 openapi + 构建报告,产出 .qiling/docs/ 下的章节文档与索引(API 文档 + 开发流程留档)"
 argument-hint: "[--preview | --regenerate-all]"
 allowed-tools:
@@ -14,7 +14,7 @@ allowed-tools:
 <runtime_note>
 **Zcode:**
 - 章节文档**只读快照**——不要让用户手改
-- `/ql-chapter` 通常由 `/ql-ship` 自动调用,用户也可手动触发
+- `/ql-doc` 通常由 `/ql-deliver` 自动调用,用户也可手动触发
 - `--preview` 用于调试模板,不影响正式产出
 </runtime_note>
 
@@ -26,8 +26,8 @@ allowed-tools:
 **章节编号 = ql 阶段编号**(从 STATE.md 读 current_phase)。
 
 **触发:**
-- 默认:`/ql-ship` 完成后自动调用
-- 手动:`/ql-chapter` 独立触发,用于模板变更后重生
+- 默认:`/ql-deliver` 完成后自动调用
+- 手动:`/ql-doc` 独立触发,用于模板变更后重生
 </context>
 
 <objective>
@@ -38,7 +38,7 @@ allowed-tools:
 
 **核心定位:** 章节文档既是项目开发留档,也是该阶段 API 的开发者文档。
 
-**讨论清单(若用户主动触发 `/ql-chapter` 时):**
+**讨论清单(若用户主动触发 `/ql-doc` 时):**
 
 | 主题 | 关键问题 |
 |------|----------|
@@ -55,11 +55,11 @@ allowed-tools:
 - `.qiling/docs/README.md`
 - `.qiling/docs/chapters/chapter-NN-*.md`
 
-**下一步:** 人工审阅章节文档,如有错误修改 `openapi.yaml` 后重跑 `/ql-ship`。
+**下一步:** 人工审阅章节文档,如有错误修改 `openapi.yaml` 后重跑 `/ql-deliver`。
 </objective>
 
 <execution_context>
-@../workflows/chapter.md
+@../workflows/doc.md
 @../templates/chapter.md
 @../templates/chapter-index.md
 </execution_context>

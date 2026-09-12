@@ -11,11 +11,11 @@ allowed-tools:
   - Grep
   - Agent
   - TodoWrite
-requires: [ql-ship]
+requires: [ql-deliver]
 ---
 
 <objective>
-**AI 波次并行构建**——基于 `/ql-discuss` 的产出,协调器自动:
+**AI 波次并行构建**——基于 `/ql-design` 的产出,协调器自动:
 
 1. 推导依赖图,每个 OpenAPI 端点/事件 = 一个独立任务
 2. Kahn 拓扑排序划分波次
@@ -35,9 +35,13 @@ requires: [ql-ship]
 
 ### 阶段 3: 自动验证
 
-对照 OpenAPI 契约 + 流程图检查,跑测试与构建。
+对照 OpenAPI 契约 + 流程图检查,跑测试与构建。每条命令记一行 PASS/FAIL/PRE-EXISTING;主会话亲自复核关键命令后才算通过。
 
-**默认行为:** 阶段 1 → 阶段 2 → 阶段 3 全自动。
+### 阶段 4: 独立评审
+
+验证通过后,主会话直接派发 `ql-reviewer`(全新上下文)给三结论(契约合规/正确性/一致性);critical 修复后复审,最多 2 轮。
+
+**默认行为:** 阶段 1 → 阶段 2 → 阶段 3 → 阶段 4 全自动。
 
 **标志:**
 - `--skeleton-only` —— 仅执行阶段 1
@@ -52,18 +56,20 @@ requires: [ql-ship]
 - `.planning/build/skeleton-report.md`
 - `.planning/build/fill-report.md`
 - `.planning/build/verification.md`
+- `.planning/build/review.md`
 - `.planning/build/waves/<wave-id>-<task>.md`(每个 worker 一份)
 
-**下一步:** `/ql-ship`
+**下一步:** `/ql-deliver`
 </objective>
 
 <execution_context>
 @../workflows/build-skeleton.md
 @../workflows/build-fill.md
+@../workflows/review.md
 @../docs/PARALLELIZATION.md
 </execution_context>
 
 <process>
 端到端执行。
-保留所有工作流门控(波次并行、骨架先行、填充、验证)。
+保留所有工作流门控(波次并行、骨架先行、填充、验证、独立评审)。
 </process>

@@ -1,7 +1,7 @@
 {
   "name": "@qiling/zcode-workflow",
-  "version": "0.5.4",
-  "description": "器灵 Zcode 工作流插件——讨论驱动 + Walking Skeleton 骨架先行 + 波次并行。三步循环:讨论 → 构建 → 交付。",
+  "version": "0.11.0",
+  "description": "器灵 Zcode 工作流插件——三步循环:定方案(ql-design)→ 写代码(ql-build)→ 交付(ql-deliver),外加修 Bug(ql-fix)、加功能(ql-add)。",
   "type": "module",
   "main": ".zcode-plugin/plugin.json",
   "files": [

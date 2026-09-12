@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /**
- * ql-docsmap 文档树渲染器(端到端):从项目目录扫描产出与 ql-chapter 完全一致格式的章节文档。
+ * ql-scan 文档树渲染器(端到端):从项目目录扫描产出与 ql-doc 完全一致格式的章节文档。
  *
- * 设计目标:与 chapter-render.mjs 产出**布局完全相同**,确保 ql-docsmap 与 ql-chapter
+ * 设计目标:与 chapter-render.mjs 产出**布局完全相同**,确保 ql-scan 与 ql-doc
  * 共享同一索引 `.qiling/docs/README.md`,不产生格式分裂。
  *
  * 输入:
@@ -12,8 +12,8 @@
  *   --out <file> —— 输出章节文件路径
  *
  * 输出:
- *   - .qiling/docs/chapters/chapter-NN-*.md(与 ql-chapter 同 5 节结构)
- *   - .qiling/docs/README.md(增量更新,与 ql-chapter 共享)
+ *   - .qiling/docs/chapters/chapter-NN-*.md(与 ql-doc 同 5 节结构)
+ *   - .qiling/docs/README.md(增量更新,与 ql-doc 共享)
  *
  * 提取项(从代码扫描,不依赖 OpenAPI):
  *   - 目录树(忽略 node_modules、dist、build、.git、.qiling、.planning)
@@ -199,7 +199,7 @@ if (existingBySlug && FORCE) {
   CHAPTER_FILE = EXPLICIT_OUT || join(chaptersDir, `${CHAPTER_ID}-${SLUG}.md`);
 }
 
-// === 步骤 6:渲染章节文件(与 ql-chapter 同 5 节结构) ===
+// === 步骤 6:渲染章节文件(与 ql-doc 同 5 节结构) ===
 
 const endpointTable = routes.length
   ? '| 方法 | 路径 | 文件 |\n|------|------|------|\n' + routes.map(r => `| ${r.method} | ${r.path} | \`${r.file}\` |`).join('\n')
@@ -216,7 +216,7 @@ chapter_id: "${CHAPTER_ID}"
 title: "${PROJECT_NAME}"
 phase: init
 generated_at: "${new Date().toISOString()}"
-generated_by: "器灵工作流 v0.5.0 / ql-docsmap"
+generated_by: "器灵工作流 v0.7.0 / ql-scan"
 ql_version: "0.5.0"
 status: "initialized"
 docsmap_init: true
@@ -224,8 +224,8 @@ docsmap_init: true
 
 # 第 ${parseInt(CHAPTER_ID.replace('chapter-', ''))} 章 · ${PROJECT_NAME}(初始化)
 
-> **本文档由 \`/ql-docsmap\` 生成** —— 通过阅读项目目录结构,产出与 \`/ql-chapter\` 完全一致格式的初始化章节。
-> 进入开发流程后,新章节由 \`/ql-chapter\` 追加,本章节作为起点。
+> **本文档由 \`/ql-scan\` 生成** —— 通过阅读项目目录结构,产出与 \`/ql-doc\` 完全一致格式的初始化章节。
+> 进入开发流程后,新章节由 \`/ql-doc\` 追加,本章节作为起点。
 
 ---
 
@@ -234,7 +234,7 @@ docsmap_init: true
 | 字段 | 值 |
 |------|---|
 | 章节 ID | ${CHAPTER_ID} |
-| 来源命令 | /ql-docsmap |
+| 来源命令 | /ql-scan |
 | 扫描路径 | ${relative(ROOT, SCAN_PATH) || '.'} |
 | 项目名 | ${PROJECT_NAME} |
 | 命令数(npm scripts) | ${scripts.length} |
@@ -259,7 +259,7 @@ ${endpointTable}
 
 ${eventTable}
 
-> **说明:** 这些是从代码反推的"已存在能力",与 OpenAPI 契约对应关系待 \`/ql-discuss\` 后补全。
+> **说明:** 这些是从代码反推的"已存在能力",与 OpenAPI 契约对应关系待 \`/ql-design\` 后补全。
 
 ---
 
@@ -307,7 +307,7 @@ npm ls --depth=0
 
 | 日期 | 操作 | 说明 |
 |------|------|------|
-| ${new Date().toISOString()} | 自动生成 | 由 \`/ql-docsmap\` 初始化 |
+| ${new Date().toISOString()} | 自动生成 | 由 \`/ql-scan\` 初始化 |
 `;
 
 writeFileSync(CHAPTER_FILE, chapterContent);
@@ -352,7 +352,7 @@ const projectMeta = (() => {
 const newIndex = `# ${projectMeta.name} · 文档树
 
 > 本目录由器灵工作流自动维护。
-> 章节文件 = \`/ql-docsmap\`(项目初始化)+ \`/ql-chapter\`(ql-ship 后)共同产出。
+> 章节文件 = \`/ql-scan\`(项目初始化)+ \`/ql-doc\`(构建交付后)共同产出。
 > 索引文件 = 本 README,**两者格式完全一致**,保证工作流顺畅。
 
 ## 章节列表
@@ -362,7 +362,7 @@ const newIndex = `# ${projectMeta.name} · 文档树
 ${chapterRows.map(c => {
   // 优先读 docsmap_init:true(章节文件里标记的来源)
   const cContent = readFileSync(join(chaptersDir, c.file), 'utf8');
-  const source = /docsmap_init:\s*true/.test(cContent) ? '/ql-docsmap' : '/ql-chapter';
+  const source = /docsmap_init:\s*true/.test(cContent) ? '/ql-scan' : '/ql-doc';
   return `| [${c.id}](./chapters/${c.file}) | ${c.title} | ${c.status} | ${source} | ${c.generated} |`;
 }).join('\n')}
 
@@ -386,7 +386,7 @@ ${chapterRows.map(c => {
 1. **新成员入门:** 浏览本索引,了解项目边界
 2. **API 使用者:** 进入章节 §一,查看命令清单与路由
 3. **维护者:** 进入章节 §二,看目录树与启动流程
-4. **从代码到 API:** 跑 \`/ql-discuss\` 生成 OpenAPI,与本章 §一交叉验证
+4. **从代码到 API:** 跑 \`/ql-design\` 生成 OpenAPI,与本章 §一交叉验证
 
 ---
 
@@ -437,7 +437,7 @@ if (linkPattern.test(writtenIndex)) {
 const sections = ['一、本章节承载', '二、项目结构', '三、与上一章节', '四、关联文档', '五、变更日志'];
 const missingSections = sections.filter(s => !writtenChapter.includes(s));
 if (missingSections.length === 0) {
-  ok('断言 5:5 节结构完整(与 ql-chapter 一致)');
+  ok('断言 5:5 节结构完整(与 ql-doc 一致)');
 } else {
   err(`断言 5:缺失节 ${missingSections.join(', ')}`);
 }

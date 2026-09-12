@@ -14,6 +14,7 @@ wave: [wave-id]
 task: [task-id,例如 "get-users-id"]
 phase: skeleton | fill
 worker: ql-builder-worker
+strictness: LIGHT | HEAVY
 executed_at: [ISO timestamp]
 duration_seconds: [N]
 status: success | partial | failed
@@ -81,6 +82,20 @@ Content-Type: application/json
 确认未修改以下文件:
 - [列出文件边界外的关键文件]
 
+## 完成检查单(DoD,全过才能置 success)
+
+- [ ] 任务描述中的验收标准全部满足(可观察结果)
+- [ ] 有测试且通过(填充阶段);或端点连通证据(骨架阶段)
+- [ ] 全量回归通过(填充阶段)
+- [ ] 修改文件清单完整(File List 与 `git status` 一致)
+- [ ] 任务卡要求的验证命令均已执行并记录
+- [ ] **清理回执**:本任务启动的服务/容器/端口/临时进程已逐项关闭(逐条列出;无则写"无")
+
+## 风险与交接(给下一波次)
+
+- **risks:** [本实现为后续波次埋下的假设、依赖或注意点;无则写"无"]
+- **Completion Notes:** [接口偏差、踩坑、约定,一段话;协调器将注入下一波次任务卡;无则写"无"]
+
 ## 返回
 
 - 状态:`success`
@@ -88,6 +103,20 @@ Content-Type: application/json
 - 提交 hash:`abc1234`、`def5678`
 - 报告路径:本文件
 ```
+
+---
+
+## 分区写权限(防交接污染)
+
+任务卡与报告的区块按所有者隔离,worker **只允许**写自己的区块:
+
+| 区块 | 所有者 | 其他角色 |
+|------|--------|----------|
+| 任务描述 / 验收标准 / Files 边界 / Interfaces | 协调器(锁定) | worker **只读**,不得改写 |
+| 实现说明 / 修改文件 / 提交 / 测试结果 / DoD | worker | 协调器只读汇总 |
+| 波次汇总 / 覆盖矩阵 | 协调器 | worker 不产出 |
+
+worker 违反边界(改了任务卡描述、越界改文件)= 报告 `status: failed`,即使"功能能跑"。
 
 ---
 

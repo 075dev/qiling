@@ -117,20 +117,20 @@
 ## 七、触发时机
 
 ```
-ql-discuss(讨论)         # 产出 OpenAPI
+ql-design(讨论)         # 产出 OpenAPI
     ↓
 ql-build(波次并行构建)   # 产出 skeleton + fill + verification
     ↓
-ql-ship(交付)            # 推送 PR
+ql-deliver(交付)            # 推送 PR
     ↓
-ql-chapter(章节留档)     # 自动调用,生成 .qiling/docs/
+ql-doc(章节留档)     # 自动调用,生成 .qiling/docs/
 ```
 
-**默认:** `/ql-ship` 完成后自动调用 `/ql-chapter`。
+**默认:** `/ql-deliver` 完成后自动调用 `/ql-doc`。
 
 **手动触发:**
-- `/ql-chapter --preview`:预览,不写文件
-- `/ql-chapter --regenerate-all`:模板变更后批量重生
+- `/ql-doc --preview`:预览,不写文件
+- `/ql-doc --regenerate-all`:模板变更后批量重生
 
 ---
 
@@ -179,8 +179,8 @@ ql-chapter(章节留档)     # 自动调用,生成 .qiling/docs/
 **永远不要**——这是只读快照。
 若内容有误,正确做法是:
 1. 修改 `.planning/context/openapi.yaml`(源头)
-2. 重跑 `/ql-discuss` 或直接 `/ql-build`(取决于修改幅度)
-3. 重跑 `/ql-ship`(自动重新生成章节)
+2. 重跑 `/ql-design` 或直接 `/ql-build`(取决于修改幅度)
+3. 重跑 `/ql-deliver`(自动重新生成章节)
 
 ---
 

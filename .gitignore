@@ -50,11 +50,11 @@ coverage/
 *.orig
 *.rej
 
-# 工作区规划文件(由 ql-discuss 阶段产出,不纳入版本控制)
+# 工作区规划文件(由 ql-design 阶段产出,不纳入版本控制)
 .planning/context/openapi.yaml
 .planning/context/event-flow.md
 .planning/STATE.md
 .planning/build/
 
-# 器灵文档树(由 ql-docsmap / ql-chapter 产出,项目本地文档)
+# 器灵文档树(由 ql-scan / ql-doc 产出,项目本地文档)
 .qiling/

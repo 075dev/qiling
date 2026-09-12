@@ -91,33 +91,49 @@ worker 任务描述必须强调:
 4. Lint / 类型检查:无错误
 5. 构建:成功
 
+验证纪律(fresh evidence):
+- 每条命令记录一行:命令 + PASS/FAIL/PRE-EXISTING
+- 已知基线失败标 PRE-EXISTING + 短标识,不算本次失败
+- 不拿 worker 报告替代命令输出
+
 产出:.planning/build/verification.md
 ```
 
-## 步骤 5: 读 verification.md
+## 步骤 5: 主会话亲自复核(fresh evidence)
 
-主会话检查验证结果:
+verification.md 是协调器的"声明"。主会话在继续前**亲自**跑最关键的两条命令并读真实输出:
 
 ```bash
-STATUS=$(grep "^status:" .planning/build/verification.md | awk '{print $2}')
+# 测试套件 + 构建(从项目实际目录跑)
+npm test        # 或仓库实际的测试命令
+npm run build   # 或仓库实际的构建命令
 ```
 
-**若 `passed`:**
-- 更新 STATE
-- 提示下一步:`/ql-ship`
+- 与摘要一致 → 继续
+- 不一致 → 以亲测结果为准,验证状态改 `gaps_found`,回到修复
 
-**若 `gaps_found`:**
-- 列出差距
-- 提示用户:可让 AI 生成修复 PLAN,或手动修复
+**验证完成前不做任何"完成"声明。**
+
+## 步骤 5.5: 独立评审
+
+验证通过后,执行 `@../workflows/review.md`:
+
+- 主会话直接派发 `ql-reviewer`(全新上下文,不经协调器)
+- 三个独立结论:契约合规 / 正确性 / 代码库一致性
+- `criticals_found` → 定向修复 → 复审(最多 2 轮),不收敛即报告僵局
+
+**串行铁律:** 验证与评审严格串行——所有验证命令退出后才派发评审,评审期间不并行跑重型测试或长驻进程。
 
 ## 步骤 6: 更新 STATE
 
 ```yaml
 ---
-status: verified | verification_failed
+status: verified | verification_failed | reviewed
 verified_at: [timestamp]
+review_verdict: approved   # 评审通过后
+review_rounds: N
 waves_executed: K
-last_activity: fill + verification complete
+last_activity: fill + verification + review complete
 ---
 ```
 
@@ -127,7 +143,8 @@ last_activity: fill + verification complete
 - 填充覆盖率
 - 测试统计
 - 验证状态
+- 评审裁定(verdict + 轮次 + 遗留 non-critical 数)
 - 波次耗时
-- 下一步:`/ql-ship`(若验证通过)
+- 下一步:`/ql-deliver`(若验证与评审均通过)
 
 </process>

@@ -41,7 +41,7 @@ const passed = [];
 function ok(msg) { passed.push(msg); }
 function err(msg) { errors.push(msg); }
 
-// === 步骤 1:准备示例输入(模拟 /ql-discuss + /ql-build 产出)===
+// === 步骤 1:准备示例输入(模拟 /ql-design + /ql-build 产出)===
 
 mkdirSync(OUT, { recursive: true });
 

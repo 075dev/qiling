@@ -37,9 +37,9 @@ function walk(dir) {
 const REPLACEMENTS = [
   // 命名/前缀:zgsd → ql
   { from: /zgsd_builder-/g, to: 'ql-builder-' },        // 旧下划线变体
-  { from: /zgsd-discuss/g, to: 'ql-discuss' },
+  { from: /zgsd-discuss/g, to: 'ql-design' },
   { from: /zgsd-build/g, to: 'ql-build' },
-  { from: /zgsd-ship/g, to: 'ql-ship' },
+  { from: /zgsd-ship/g, to: 'ql-deliver' },
   // 命令名 zgsd: → ql:
   { from: /zgsd:/g, to: 'ql:' },
   // 状态机版本键
@@ -53,7 +53,7 @@ const REPLACEMENTS = [
   { from: /zgsd 验证/g, to: '器灵验证' },
   { from: /zgsd builder worker/g, to: 'ql-builder-worker' },
   { from: /zgsd builder coordinator/g, to: 'ql-builder-coordinator' },
-  { from: /zgsd discuss coach/g, to: 'ql-discuss-coach' },
+  { from: /zgsd discuss coach/g, to: 'ql-design-coach' },
   // 单独出现的 zgsd(避免遗留):worktree 路径、分支前缀、capability prefix
   { from: /\.git\/zgsd\//g, to: '.git/ql/' },
   { from: /"zgsd\//g, to: '"ql/' },

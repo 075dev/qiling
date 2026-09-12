@@ -80,6 +80,19 @@ test -f .planning/build/fill-report.md && cat .planning/build/fill-report.md
 | 事件订阅 | 订阅 `user.created` 的 worker 依赖发布 `user.created` 的 worker |
 | 错误响应 | 所有端点依赖基础错误处理(由协调器预设) |
 
+**覆盖矩阵(派发前必出,防"契约有、任务无"):**
+
+推导完成后立即产出,追加进阶段报告:
+
+| OperationId / 事件 | 有任务? | 任务 ID |
+|--------------------|---------|---------|
+| GET /users | ✅ | TASK_GET_USERS |
+| POST /orders | ✅ | TASK_POST_ORDERS |
+
+- 契约声明的端点/事件**零任务覆盖 = CRITICAL**,不得派发,先补任务划分
+- 孤儿任务(不映射任何契约项)= HIGH,核实是否越界实现
+- 术语漂移(任务名与契约 schema 命名不一致)= HIGH,以契约为准改名
+
 ## 步骤 3: 划分波次(Kahn 算法)
 
 ```text
@@ -102,25 +115,50 @@ Wave N: 最后一个波次
 
 **约束:** 同一波次任务数 ≤ `max_concurrent`。超过则分裂为多个波次。
 
+**同波耦合检查:** 划分后发现同波两任务存在共享文件或隐式耦合时,默认 **advisory**(提示而非硬失败);若确要同波,任务清单必须显式写 `coupling_justified: <原因>` 才放行——显式声明优于反复空转拆波。
+
 ## 步骤 4: 创建 Worktree(每个波次开始时)
+
+**Worktree 所有权规则:**
+
+- worker 的 worktree 基于**当前特性分支**(从任务描述的 `work_branch` 读取),**绝不基于 main/master**
+- 先检测是否已在 linked worktree 中:`git rev-parse --git-dir` 与 `git rev-parse --git-common-dir` 不同 = 已在 worktree 中 → 沿用当前工作区派发,**禁止嵌套** `git worktree add`
+- 检测到 submodule(`git rev-parse --show-superproject-working-tree` 非空)不算 linked worktree
 
 ```bash
 WORKTREE_BASE=".git/ql/worktrees"
 mkdir -p $WORKTREE_BASE
 
-# 为当前波次每个任务创建 worktree + 分支
+# 已在 linked worktree 中 → 跳过创建,直接在当前工作区派发 worker
+# 否则为当前波次每个任务创建 worktree + 分支(基于特性分支,非 main)
 for task in $WAVE_TASKS; do
   worker_id="wave-${WAVE_ID}-${task}"
   branch="ql/${worker_id}"
   worktree_path="$WORKTREE_BASE/${worker_id}"
 
-  git worktree add -b "$branch" "$worktree_path" main
+  git worktree add -b "$branch" "$worktree_path" "$WORK_BRANCH"
 done
 ```
 
 ## 步骤 5: 并行派发 Worker
 
-对当前波次的每个任务,**并行**派发 `ql-builder-worker` 子智能体:
+对当前波次的每个任务,**并行**派发 `ql-builder-worker` 子智能体。
+
+**任务描述必须自包含**——worker 是全新上下文,拿不到你的会话历史。每份描述必须含:
+
+1. 工作区路径(worktree 绝对路径)
+2. 任务本身(端点/事件 + 阶段)
+3. **严格度:LIGHT | HEAVY** —— 从契约事实判定:新模块 / 安全相关(auth、密钥、鉴权)/ 外部集成 / DB schema 变更 / 并发处理 = **HEAVY**;既有层内窄改 = LIGHT。规则:**默认 LIGHT,命中任一 HEAVY 事实立即升级并补齐高阶门控,拿不准取 HEAVY,永不降级**。HEAVY 任务的评审自动升到最严档
+4. **Files 边界**:允许修改的精确文件路径(Create/Modify 分列);越界修改 = 任务失败
+5. **Interfaces**:Consumes(本任务消费的前序波次函数/端点签名)/ Produces(后续任务依赖的本任务产出——精确的名字与类型)
+6. 验收标准(可观察结果,如"curl 返回 201 + schema 匹配")
+7. 相关规范章节(只给该任务涉及的 OpenAPI schema/流程片段)
+8. 要求的验证(该任务要跑的命令)
+9. **上一波次备注**(波次 ≥ 2 时):注入上一波次所有 worker 的 Completion Notes 摘要、risks 与新增文件清单——接口偏差、踩坑、约定,防止波次间漂移
+
+**禁占位符:** 派发前自查任务卡,出现"待定 / TBD / 适当处理 / 参考任务 N / 同上"即为派发失败——先补全再派发。worker 可能乱序阅读任务卡,每个任务卡必须独立完备。
+
+**绝不传递**会话历史、实现叙事或无关任务的细节。
 
 ```
 Agent(
@@ -135,20 +173,42 @@ Agent(
   - 相关 schema:User, Order (从依赖分析得出)
   - 相关流程图:user-created-events (从依赖分析得出)
   - 上阶段报告:[skeleton-report.md 或 fill-report.md,若存在]
+Files 边界:
+  - 允许创建:src/routes/orders.ts, tests/routes/orders.test.ts
+  - 允许修改:src/routes/index.ts(仅注册路由一行)
+Interfaces:
+  - Consumes:GET /users 返回的 User schema(波次 1 已产出)
+  - Produces:POST /orders 的 Order schema(波次 3 的 GET /orders/:id 将消费)
+上一波次备注:[摘要:如 "波次 1 的 mock-store 导出为 default,非命名导出"]
+验收标准:[可观察结果,如 curl POST 返回 201 且响应匹配 Order schema]
+要求的验证:[该任务要跑的命令,如 npm test -- orders]
 产出:
-  - 实现代码(在工作目录)
+  - 实现代码(在 Files 边界内)
   - 测试代码
-  - .planning/build/waves/wave-${WAVE_ID}-${task}.md(单端点报告)
+  - .planning/build/waves/wave-${WAVE_ID}-${task}.md(单端点报告,含 DoD 检查单)
 约束:
-  - 仅修改与你任务相关的文件(由协调器声明)
+  - 仅修改 Files 边界内的文件
+  - 任务卡(本描述)为锁定契约:实现中发现任务卡有误 → 报告 failed 并说明,不得擅自改需求
   - 原子提交,信息:feat([task]): ...
   - 不与其他 worker 通信
-  - 完成后报告:状态、文件清单、提交 hash
+  - 完成后报告:状态、文件清单、提交 hash、Completion Notes(给下一波次的话)
   `
 )
 ```
 
 **并行派发:** 同一波次所有 Agent 调用并行执行,不等待。
+
+**报告当 claim,合并前实测:** worker 的完成报告是"声明"而非"事实"。合并该 worker 分支前,用 git **实测**(而非采信自述):
+
+```bash
+git log --oneline "$WORK_BRANCH".."ql/wave-${WAVE_ID}-${task}"   # 提交数与信息格式
+git diff --name-only "$WORK_BRANCH"..."ql/wave-${WAVE_ID}-${task}" # 改动文件范围
+```
+
+- 改动文件落在任务卡 Files 边界之外 = **BLOCKER**,退回 worker,不得合并
+- 提交数/信息与声明不符 = 退回核实
+- **禁止 worker 使用 `git stash`**(破坏 worktree 隔离语义);发现 stash 记录即退回
+- worker 提交绝不落在默认/受保护分支(main/master)
 
 ## 步骤 6: 收集结果与合并
 
@@ -169,7 +229,31 @@ for task in $WAVE_TASKS; do
 done
 ```
 
+**进度台账(progress ledger):** 每合并完一个 worker,向 `.planning/build/progress.md` 追加一行。每条任务带**可机器验证的验收标准**和一个**三态结果**——`PASS | FAIL | NOT_RUN`,完成 = 置 PASS,不写自由文本:
+
+```
+Wave [N] [task] status:FAIL    | acceptance:"curl POST /orders → 201 且 schema 匹配" | strictness:HEAVY | reason:<一句话>
+Wave [N] [task] status:PASS    | acceptance:"curl POST /orders → 201 且 schema 匹配" | strictness:HEAVY | evidence:commits abc1234..def5678 + npm test 输出
+Wave [N] [task] status:NOT_RUN | acceptance:"..." | strictness:LIGHT | reason:<为什么没跑成:缺依赖/环境不可用/上游失败>
+```
+
+**认识论纪律:**
+
+- **无法执行的检查记 `NOT_RUN` 并写明原因**——NOT_RUN 不是失败也不是通过,恢复时必须补跑
+- **零检查不得报绿**——一条证据都没有的 PASS 是伪造,按 FAIL 处理
+- 台账是断点续跑的唯一依据:恢复时**只信台账与 git log,不信记忆**——从第一个非 PASS 的任务继续;计划、台账、复选框必须永远讲同一个故事
+
 ## 步骤 7: 波次验证
+
+**波后 scoped 轻量检查(合并前,问题不过夜):** 全量验证留给阶段末尾,但每波合并前对**本波 diff(相对上一波)**做一次轻量检查:
+
+```bash
+git diff --stat "$PREV_WAVE_BASE".."ql/wave-${WAVE_ID}-${task}"
+```
+
+- 目标化检查:本波任务的验收标准 + 是否破坏上一波已验证的接口(Interfaces Consumes)
+- 发现问题当场退回对应 worker,不带进下一波——**波次间集成问题在下一波开始前解决,成本最低**
+- 结果一行记入 `.planning/build/waves/wave-${WAVE_ID}-verify.md`
 
 ```bash
 # 端到端连通性验证

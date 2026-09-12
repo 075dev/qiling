@@ -1,7 +1,7 @@
 # 章节模板
 
 > **用途:** `.qiling/docs/chapters/chapter-NN-*.md`
-> **触发时机:** `/ql-ship` 成功推送 PR 后自动生成
+> **触发时机:** `/ql-deliver` 成功推送 PR 后自动生成
 > **关联文档:** 模板由 `templates/chapter.md` 派生,实例如 `.qiling/docs/README.md` 索引
 
 ---
@@ -23,9 +23,9 @@ status: "shipped | shipped_with_gaps | shipped_failed"
 
 # 第 N 章 · [章节标题]
 
-> **API 驱动开发留档** —— 本章节文档由器灵工作流在 `/ql-ship` 成功后自动产出。
+> **API 驱动开发留档** —— 本章节文档由器灵工作流在 `/ql-deliver` 成功后自动产出。
 > 它既是项目开发流程的留档,也是该阶段交付 API 的开发者文档。
-> **不要直接编辑本文件** —— 它会在下次 `/ql-ship` 时被覆盖。如需更正,请提交 PR 修改上游 `openapi.yaml` 或 workflow,然后重跑 `/ql-ship`。
+> **不要直接编辑本文件** —— 它会在下次 `/ql-deliver` 时被覆盖。如需更正,请提交 PR 修改上游 `openapi.yaml` 或 workflow,然后重跑 `/ql-deliver`。
 
 ---
 
@@ -315,7 +315,7 @@ timeline
 
 | 日期 | 操作 | 说明 |
 |------|------|------|
-| [ISO] | 自动生成 | `/ql-ship` 后由器灵产出 |
+| [ISO] | 自动生成 | `/ql-deliver` 后由器灵产出 |
 ```
 
 ---

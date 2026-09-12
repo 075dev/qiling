@@ -1,5 +1,5 @@
 ---
-name: ql-docsmap
+name: ql-scan
 description: "文档树生成——通过阅读项目结构,产出与章节留档完全一致格式的文档树(.qiling/docs/)"
 argument-hint: "[--path <dir>] [--refresh] [--merge]"
 allowed-tools:
@@ -13,7 +13,7 @@ allowed-tools:
 
 <runtime_note>
 **Zcode:**
-- 文档树产出与 `/ql-chapter` 共用同一索引 `.qiling/docs/README.md`
+- 文档树产出与 `/ql-doc` 共用同一索引 `.qiling/docs/README.md`
 - 默认增量 append,不覆盖已有章节(除非 `--refresh`)
 - 章节 ID 自动从现有最大值 + 1 起算
 </runtime_note>
@@ -24,16 +24,16 @@ allowed-tools:
 - 初始化新项目但代码已存在
 - 项目结构大改后刷新文档树
 
-**与 `/ql-chapter` 关系:**
-- `ql-docsmap` = 初始化入口(读代码 → 文档树)
-- `ql-chapter` = 持续入口(读 OpenAPI → 文档树)
+**与 `/ql-doc` 关系:**
+- `ql-scan` = 初始化入口(读代码 → 文档树)
+- `ql-doc` = 持续入口(读 OpenAPI → 文档树)
 - 两者产出**结构完全一致**,索引合并为同一份
 </context>
 
 <objective>
 扫描项目结构,产出:
 
-- **章节文件**:`.qiling/docs/chapters/chapter-NN-<slug>.md`(与 ql-chapter 5 节结构相同)
+- **章节文件**:`.qiling/docs/chapters/chapter-NN-<slug>.md`(与 ql-doc 5 节结构相同)
 - **索引文件**:增量更新 `.qiling/docs/README.md`
 
 **章节内容覆盖:**
@@ -43,9 +43,9 @@ allowed-tools:
 - §四 **关联文档链接**
 - §五 **变更日志**
 
-**核心承诺:** 与 `/ql-chapter` 产出**结构完全一致**——这是用户明确决策的工作流顺畅性要求。
+**核心承诺:** 与 `/ql-doc` 产出**结构完全一致**——这是用户明确决策的工作流顺畅性要求。
 
-**讨论清单(若用户主动触发 `/ql-docsmap` 时):**
+**讨论清单(若用户主动触发 `/ql-scan` 时):**
 
 | 主题 | 关键问题 |
 |------|----------|
@@ -55,18 +55,18 @@ allowed-tools:
 | 跳过目录 | node_modules、dist、build 等 |
 
 **不要讨论:**
-- 章节模板细节(与 ql-chapter 共用)
-- 索引格式(与 ql-chapter 共用)
+- 章节模板细节(与 ql-doc 共用)
+- 索引格式(与 ql-doc 共用)
 
 **产出:**
 - `.qiling/docs/README.md`(增量更新)
 - `.qiling/docs/chapters/chapter-NN-*.md`(新增或追加)
 
-**下一步:** 进入 `/ql-discuss` 或 `/ql-build`,从代码到 API。
+**下一步:** 进入 `/ql-design` 或 `/ql-build`,从代码到 API。
 </objective>
 
 <execution_context>
-@../workflows/docsmap.md
+@../workflows/scan.md
 @../templates/chapter.md
 @../templates/chapter-index.md
 @../scripts/docsmap.mjs

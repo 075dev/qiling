@@ -3,7 +3,7 @@
  * 器灵工作流流程模拟验证器。
  *
  * 在隔离目录(临时)中模拟一次完整的三步循环:
- *   ql-discuss → ql-build → ql-ship
+ *   ql-design → ql-build → ql-deliver
  *
  * 每个阶段检查:
  * - 输入文件存在性
@@ -34,10 +34,10 @@ if (existsSync(SANDBOX)) rmSync(SANDBOX, { recursive: true, force: true });
 mkdirSync(join(SANDBOX, '.planning', 'context'), { recursive: true });
 mkdirSync(join(SANDBOX, '.planning', 'build'), { recursive: true });
 
-console.log('\n🧪 模拟三步循环:ql-discuss → ql-build → ql-ship\n');
+console.log('\n🧪 模拟三步循环:ql-design → ql-build → ql-deliver\n');
 
-// === 阶段 1:ql-discuss ===
-console.log('═══ 阶段 1:ql-discuss(讨论产出 OpenAPI + Mermaid)═══');
+// === 阶段 1:ql-design ===
+console.log('═══ 阶段 1:ql-design(讨论产出 OpenAPI + Mermaid)═══');
 
 // 模拟讨论产出:写 openapi.yaml + event-flow.md + STATE.md
 const openapi = `openapi: 3.1.0
@@ -163,8 +163,8 @@ const vStatus = (verification.match(/^status:\s*(\S+)/m) || [])[1];
 if (vStatus === 'passed') ok('验证阶段:verification.md status = passed');
 else err(`验证阶段:verification.md status = "${vStatus}"(ship 要求 passed)`);
 
-// === 阶段 3:ql-ship ===
-console.log('\n═══ 阶段 3:ql-ship(交付)═══');
+// === 阶段 3:ql-deliver ===
+console.log('\n═══ 阶段 3:ql-deliver(交付)═══');
 
 // ship 前置检查(模拟)
 const checks = [
@@ -198,8 +198,8 @@ const prBody = `## 实现 [从 OpenAPI 提取的功能集]
 writeFileSync(join(SANDBOX, '.planning/build/pr-body.md'), prBody);
 ok('ship 产出:PR body 已生成');
 
-// === 阶段 3.5:ql-chapter(章节留档,ship 后自动) ===
-console.log('\n═══ 阶段 3.5:ql-chapter(章节留档生成)═══');
+// === 阶段 3.5:ql-doc(章节留档,ship 后自动) ===
+console.log('\n═══ 阶段 3.5:ql-doc(章节留档生成)═══');
 
 mkdirSync(join(SANDBOX, '.qiling/docs/chapters'), { recursive: true });
 

@@ -10,8 +10,8 @@
     {
       "name": "qiling",
       "source": "./",
-      "description": "讨论驱动的 Zcode 工作流插件(器灵)。三步循环:讨论 → 构建 → 交付。新增章节留档(/ql-chapter)与文档树生成(/ql-docsmap)。",
-      "version": "0.5.4",
+      "description": "器灵 Zcode 工作流插件:三步循环 定方案(ql-design)→ 写代码(ql-build,波次并行)→ 交付(ql-deliver),外加修 Bug(ql-fix)、加功能(ql-add)、章节文档(ql-doc)与项目扫描(ql-scan)。",
+      "version": "0.11.0",
       "author": {
         "name": "ZcodePlugin",
         "url": "https://github.com/075dev/qiling"

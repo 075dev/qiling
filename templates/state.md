@@ -10,7 +10,9 @@
 ---
 ql_state_version: '1.0'
 current_phase: 1
-status: discussing | discussed | skeleton_complete | verified | shipped
+status: discussing | discussed | skeleton_complete | verified | reviewed | shipped
+work_branch: <特性分支名>
+base_sha: <构建起点 SHA,独立评审 diff 锚点>
 ---
 
 # 项目状态
@@ -57,7 +59,10 @@ status: discussing | discussed | skeleton_complete | verified | shipped
 
 **上次会话:** [YYYY-MM-DD HH:MM]
 **停在:** [描述]
-**恢复方式:** `/ql-discuss` 或 `/ql-build`
+**恢复方式:** `/ql-design` 或 `/ql-build`
+
+**恢复指令(压缩/检查点时必须保留原文):**
+> 上下文被压缩或恢复会话后,若器灵工作流指令缺失,先重新加载当前阶段对应的技能(`/ql-design`、`/ql-build` 或 `/ql-deliver`),再读本 STATE 继续;不要凭记忆续跑流程。
 ```
 
 ---

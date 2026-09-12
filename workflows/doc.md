@@ -7,12 +7,12 @@ consumes: openapi.yaml, event-flow.md, build/skeleton-report.md, build/fill-repo
 -->
 
 <purpose>
-**章节留档生成** —— 在 `/ql-ship` 成功推送 PR 后,自动产出:
+**章节留档生成** —— 在 `/ql-deliver` 成功推送 PR 后,自动产出:
 1. **章节文件**:`.qiling/docs/chapters/chapter-NN-*.md`(API 文档 + 开发流程留档)
 2. **索引文件**:`.qiling/docs/README.md`(所有章节的汇总索引)
 
 **核心定位:** 章节文档既是项目开发留档,也是该阶段 API 的开发者文档。
-**触发位置:** 在 `workflows/ship.md` 的"步骤 3 推送 PR"成功之后。
+**触发位置:** 在 `workflows/deliver.md` 的"步骤 3 推送 PR"成功之后。
 </purpose>
 
 <process>
@@ -25,7 +25,7 @@ mkdir -p .qiling/docs/chapters/.diffs
 
 # 读取上下文
 test -f .planning/context/openapi.yaml || {
-  echo "错误: 缺少 openapi.yaml。请先运行 /ql-discuss"
+  echo "错误: 缺少 openapi.yaml。请先运行 /ql-design"
   exit 1
 }
 
@@ -124,7 +124,7 @@ git commit -m "docs(chapter-${CHAPTER_ID}): 自动生成章节文档
 - API 端点:${ENDPOINT_COUNT}
 - 事件消息:${EVENT_COUNT}
 
-🤖 由器灵工作流 /ql-ship 生成"
+🤖 由器灵工作流 /ql-deliver 生成"
 
 # 推送到当前 PR
 git push origin $(git branch --show-current)
@@ -143,7 +143,7 @@ git push origin $(git branch --show-current)
 波次数:${WAVE_COUNT}
 关联 PR:${PR_URL}
 
-下一步:审阅章节文档,如有错误修改 openapi.yaml 后重跑 /ql-ship。
+下一步:审阅章节文档,如有错误修改 openapi.yaml 后重跑 /ql-deliver。
 ```
 
 </process>
@@ -154,7 +154,7 @@ git push origin $(git branch --show-current)
 
 ## 与 ship 的跳接点
 
-`workflows/ship.md` 在 PR 创建成功后,跳转到本工作流:
+`workflows/deliver.md` 在 PR 创建成功后,跳转到本工作流:
 
 ```bash
 # 在 ship 步骤 2 末尾追加:
@@ -172,9 +172,9 @@ echo "📝 生成章节文档..."
 
 ```bash
 # 用户手动调用
-/ql-ship     # 推送 PR + 生成章节
+/ql-deliver     # 推送 PR + 生成章节
 # 或独立触发
-/ql-chapter  # 仅生成章节(不推送 PR)
+/ql-doc  # 仅生成章节(不推送 PR)
 ```
 
 ## 与 discuss 的跳接点

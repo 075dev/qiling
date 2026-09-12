@@ -25,13 +25,22 @@
    串行处理 20+ 端点极慢,且让 AI 上下文腐化。
    本插件从 OpenAPI 自动推导依赖 → 拓扑排序 → 同波次并行(Git Worktree 隔离)。
 
-### 三步循环
+5. **实现者自查有盲区,验证不能替代评审**
+   验证只能证明"实现符合契约",查不出"契约本身写错、测试复制生产逻辑、边界想错"。
+   本插件在验证通过后派发**全新上下文的独立评审者**(ql-reviewer):只看规范 + diff + 验证摘要,
+   不带实现者叙事,给出契约合规 / 正确性 / 代码库一致性三个独立结论;critical 阻断交付。
+
+### 三步循环 + 两条旁路 + 状态入口
 
 ```text
-讨论 → 构建(波次并行) → 交付
+讨论(ql-design) → 构建(ql-build,波次并行) → 交付(ql-deliver)
+
+旁路:ql-fix —— 修 Bug(复现 → 根因 → 最小修复 → 回归),循环外
+旁路:ql-add —— 加功能(定位章节 → 补契约 → 增量构建 → 同步文档),循环外
+入口:ql-next —— 不确定做什么时,从磁盘事实推导当前位置并推荐下一步(只读零副作用)
 ```
 
-#### 讨论(`/ql-discuss`)
+#### 讨论(`/ql-design`)
 
 **输入:** 用户对话
 **产出:** OpenAPI + Mermaid 流程图 + STATE 更新
@@ -43,23 +52,31 @@
 #### 构建(`/ql-build`)—— **波次并行**
 
 **输入:** OpenAPI + 流程图
-**产出:** Walking Skeleton + 填充实现 + 验证报告
+**产出:** Walking Skeleton + 填充实现 + 验证报告 + 评审报告
 **关键:**
 - 阶段 1(并行骨架):协调器派生依赖图,划分波次,并行派发 worker 实现每个端点的 mock
 - 阶段 2(并行填充):协调器同样派生波次,并行派发 worker 替换 mock 为真实实现
-- 阶段 3(自动验证):对照契约与流程图检查
+- 阶段 3(自动验证):对照契约与流程图检查;每条命令记一行 PASS/FAIL/PRE-EXISTING,主会话亲自复核关键命令
+- 阶段 4(独立评审):验证通过后,主会话直接派发全新上下文的 `ql-reviewer`,给三结论(契约合规/正确性/一致性);critical 定向修复后复审(最多 2 轮),不收敛即报告僵局
 
 **为什么是并行:**
 - 速度:多 worker 同时工作
 - 上下文质量:每个 worker 上下文保持精简
 - 自动推导依赖:OpenAPI schema `$ref` + 路径前缀 + 事件订阅
 
-#### 交付(`/ql-ship`)
+**为什么还要独立评审:**
+- 验证只能证明"实现符合契约",查不出契约写错、测试复制生产逻辑、边界想错
+- 实现者自查有盲区;评审者与实现者无共享上下文,只看证据
 
-**输入:** 验证通过的代码
+#### 交付(`/ql-deliver`)
+
+**输入:** 验证与评审均通过的代码
 **产出:** PR + STATE 更新
 **关键:**
-- 自动生成 PR(标题从 OpenAPI,正文含端点列表)
+- 前置:`verification.md` passed **且** `review.md` approved
+- **不自动收尾**——呈现特性分支、base/head SHA、文档路径,由用户选:创建 PR(推荐)/ 仅推送 / 保留本地
+- PR 正文含端点列表、验证摘要、评审裁定、遗留 non-critical、经验教训
+- 自动生成章节留档
 - 推进到下一阶段或标记里程碑完成
 
 ---
@@ -67,33 +84,43 @@
 ## 目录结构
 
 ```
-qiling/(器灵 v0.3.0,目录名仍为 zcode-gsd-workflow)
-├── commands/                          # 3 个核心命令入口
-│   ├── ql-discuss.md
-│   ├── ql-build.md                  # 波次并行
-│   └── ql-ship.md
-├── skills/                            # 嵌套式 SKILL.md
-│   ├── ql-discuss/SKILL.md
-│   ├── ql-build/SKILL.md
-│   └── ql-ship/SKILL.md
-├── workflows/                         # 4 个工作流实现
-│   ├── discuss.md
+qiling/(器灵 v0.11.0)
+├── commands/                          # 8 个命令入口(+4 个旧名别名)
+│   ├── ql-scan.md                     # 扫描代码 → 文档树
+│   ├── ql-design.md                   # 定方案(契约 + 流程图)
+│   ├── ql-build.md                    # 写代码(波次并行)
+│   ├── ql-deliver.md                  # 交付
+│   ├── ql-doc.md                      # 章节文档
+│   ├── ql-fix.md                      # 修 Bug
+│   ├── ql-add.md                      # 加功能
+│   └── ql-next.md                     # 下一步提示(状态感知入口)
+├── skills/                            # 嵌套式 SKILL.md(与命令同名)
+│   └── ql-{scan,design,build,deliver,doc,fix,add,next}/SKILL.md
+├── workflows/                         # 10 个工作流实现
+│   ├── scan.md / design.md            # 初始化与方案
 │   ├── build-skeleton.md              # 波次并行骨架
-│   ├── build-fill.md                  # 波次并行填充
-│   └── ship.md
-├── agents/                            # 3 个子智能体
-│   ├── ql-discuss-coach.md          # 讨论引导
+│   ├── build-fill.md                  # 波次并行填充 + 自动验证
+│   ├── review.md                      # 独立评审
+│   ├── deliver.md / doc.md            # 交付与章节渲染
+│   ├── fix.md / add.md                # 旁路:修 Bug 与加功能
+│   └── next.md                        # 状态判定 → 下一步建议
+├── agents/                            # 4 个子智能体
+│   ├── ql-design-coach.md          # 讨论引导
 │   ├── ql-builder-coordinator.md    # 协调器:依赖分析、波次划分、派发、合并
-│   └── ql-builder-worker.md         # Worker:单端点/事件,全新上下文,Git Worktree
-├── templates/                         # 8 个工件模板
+│   ├── ql-builder-worker.md         # Worker:单端点/事件,全新上下文,Git Worktree
+│   └── ql-reviewer.md               # 独立评审者:全新上下文,三结论,只评审不修复
+├── templates/                         # 13 个工件模板
 │   ├── openapi-spec.yaml
 │   ├── event-flow.md
 │   ├── state.md
 │   ├── skeleton-plan.md
-│   ├── build-report.md
+│   ├── build-report.md                # 骨架/填充报告(含旅程日志)
 │   ├── wave-report.md                 # 波次报告(协调器-worker 契约)
-│   ├── verification.md
-│   └── config.json
+│   ├── verification.md                # 验证报告(命令级证据)
+│   ├── review.md                      # 独立评审报告
+│   ├── bugfix-report.md               # Bug 修复报告
+│   ├── chapter.md / chapter-index.md  # 章节留档
+│   └── config.json / config-schema.json
 ├── .zcode-plugin/                # Zcode 插件市场元数据
 │   ├── plugin.json
 │   └── capability.json
@@ -109,7 +136,7 @@ qiling/(器灵 v0.3.0,目录名仍为 zcode-gsd-workflow)
 
 ## 子智能体设计
 
-### ql-discuss-coach
+### ql-design-coach
 
 **角色:** 引导对话讨论
 **特点:** 由协调器自身承担(无需派发)
@@ -144,6 +171,18 @@ qiling/(器灵 v0.3.0,目录名仍为 zcode-gsd-workflow)
 - 不修改文件边界外的文件
 - 原子提交
 - 产出单端点报告
+
+### ql-reviewer
+
+**角色:** 独立评审者(交付前最后一道质量门)
+**特点:** **全新 200k token 上下文**,与实现者零共享记忆;由主会话直接派发(不经协调器);**只评审,不修复**
+**职责:**
+1. 读规范(OpenAPI + 流程图)、完整 diff(base..head)、验证摘要
+2. 对照契约与流程图逐条核对验收标准
+3. 抽查验证摘要可信度(不重跑已 PASS 的重型命令)
+4. 给三个独立结论:**契约合规 / 正确性 / 代码库一致性**,每个发现附证据(文件:行号或亲测命令输出)
+5. 写 `review.md`,裁定 `approved | criticals_found`
+6. 修复后复审受影响区域(最多 2 轮);两轮不收敛即上报僵局,不强行通过
 
 ---
 
@@ -202,14 +241,15 @@ Wave 2:依赖 Wave 1 的任务(并行)
 | 维度 | GSD Core | 本插件 |
 |-----|----------|--------|
 | **核心循环** | 5 步 | **3 步** |
-| **命令数量** | 70+ | **3** |
-| **子智能体** | 35+ | **3**(coach + coordinator + worker) |
-| **工作流** | 110+ | **4** |
+| **命令数量** | 70+ | **5** |
+| **子智能体** | 35+ | **4**(coach + coordinator + worker + reviewer) |
+| **工作流** | 110+ | **6** |
 | **适配运行时** | 17+ | **1**(Zcode) |
 | **讨论产出** | 模糊决策记录 | **OpenAPI + Mermaid** |
 | **构建方法** | 串行+波次并行 | **全自动波次并行 + Worktree** |
 | **依赖推导** | 手工 PLAN + 复杂分析 | **自动从 OpenAPI 推导** |
 | **派发粒度** | PLAN(预定义) | **端点/事件(自动)** |
+| **质量门** | 人工评审 | **契约验证 + 独立评审(全新上下文,三结论)** |
 
 ---
 

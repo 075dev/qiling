@@ -1,5 +1,5 @@
 ---
-name: ql-discuss
+name: ql-design
 description: "讨论驱动开发——对话产出 OpenAPI 3.1 契约 + Mermaid 事件流程图,作为 AI 自动构建的输入"
 argument-hint: "[--auto]"
 allowed-tools:
@@ -13,6 +13,8 @@ allowed-tools:
 
 <runtime_note>
 **Zcode:** 用 `AskUserQuestion` 多选题;自由文本对话直接输出。
+
+**Never-Ask 降级:** 若 `AskUserQuestion` 不可用或被拒,仅对当前决策自决:选证据支持的推荐项/最小范围项,绝不自批破坏性操作,并说明理由。仅对该决策有效,后续决策照常提问。
 </runtime_note>
 
 <context>
@@ -22,6 +24,8 @@ allowed-tools:
 **讨论阶段编号:**
 - 若 `.planning/STATE.md` 已存在 → 读 `current_phase`
 - 否则 → 1
+
+**Orient 优先:** 提问前先勘察仓库(package.json、README、近期提交)——技术栈、领域命名、当前方向直接采用,只问真正的产品决策。绝不问环境已经能回答的问题。
 </context>
 
 <objective>
@@ -47,15 +51,15 @@ allowed-tools:
 - 文件组织(由 AI 决定)
 
 **产出:**
-- `.planning/context/openapi.yaml`
-- `.planning/context/event-flow.md`
+- `.planning/context/openapi.yaml`(已存在时**就地修订**,不另建第二份规范)
+- `.planning/context/event-flow.md`(同上)
 - `.planning/STATE.md` 更新
 
 **下一步:** `/ql-build`
 </objective>
 
 <execution_context>
-@../workflows/discuss.md
+@../workflows/design.md
 @../templates/openapi-spec.yaml
 @../templates/event-flow.md
 </execution_context>
