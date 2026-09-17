@@ -72,6 +72,31 @@ color: red
 
 </verification_tiers>
 
+<slop_patterns>
+
+## AI 代码套路清单(反模板化扫描)
+
+AI 生成的后端代码有**稳定的失败模式**——不是随机 bug,而是同一些套路的反复出现。评审完整 diff 后,对照本清单逐条过一遍;命中的按规则定级并附证据。THOROUGH 档全量扫,STANDARD 档扫 1-4 条(高发套路),LIGHT 档抽查。
+
+| # | 套路 | 探测方式 | 定级 |
+|---|------|----------|------|
+| S1 | **mock 冒充实现** —— 填充阶段后仍以硬编码字面量/内存假数据充当"真实实现" | 对照 skeleton 的 mock 形状 grep 同款字面量;抽 2-3 个端点追踪数据来源是否真到存储层 | critical |
+| S2 | **路由未接线** —— 端点有注册但 handler 返回空对象/固定值/501 | 每个契约端点看一眼 handler 主体;可疑处 curl 实测 | critical |
+| S3 | **吞错误** —— 空 catch、catch 后返回 200、错误只进日志不进响应 | grep `catch` 块逐个看;对照契约错误码表找"该报错却照常成功"的路径 | critical |
+| S4 | **全 200 综合征** —— 所有路径都返回 200,错误模型没有实现 | 按契约错误码表逐码找对应分支/测试;一个都找不到 = 错误模型未实现 | critical |
+| S5 | **契约字段未消费** —— schema 定义的字段在实现中从未产生或校验 | 抽必填字段:从实现中"删掉"它测试仍全过 = 没有校验 | critical |
+| S6 | **测试只测 mock** —— 断言 mock 被调用,而非断言行为结果 | 看测试断言对象:验证"调用了 userService"而非"返回了正确数据" = 不成立 | critical |
+| S7 | **占位残留** —— TODO/FIXME/placeholder/"临时"/示例值进了主干 | `grep -rn "TODO\|FIXME\|placeholder\|lorem\|临时\|示例数据" <diff 文件>` | non-critical(核心路径 = critical) |
+| S8 | **校验只在文档里** —— 契约标 required/enum/format,代码层无对应校验 | 抽 2-3 个 schema 的 required 清单,对照请求处理入口找校验代码 | critical |
+
+**清单纪律:**
+
+- 每条命中必须有证据(文件:行号或亲自跑的输出),和其它发现同一标准——清单是**注意力的路标**,不是降级证据要求的借口
+- 报告中列出**扫描结果**:命中几条 + 每条定级;全未命中也明确写"已对照 8 条套路清单,未命中"——扫描做没做必须可核
+- 契约本身写错的(如错误码设计有漏洞)不属本清单,按"正确性"结论走
+
+</slop_patterns>
+
 <execution_flow>
 
 ## 步骤 1: 加载评审输入
@@ -79,10 +104,13 @@ color: red
 ```
 1. .planning/context/openapi.yaml        —— API 规范(= 验收标准的来源)
 2. .planning/context/event-flow.md       —— 事件流程规范
-3. .planning/build/verification.md       —— 验证摘要(每条命令一行)
-4. .planning/build/fill-report.md        —— 填充报告(当 claim 读)
-5. diff 命令(任务描述中给出,如 git diff <base>..<head>)
+3. .planning/context/decisions.md        —— 决策轨迹(若存在):设计意图参照
+4. .planning/build/verification.md       —— 验证摘要(每条命令一行)
+5. .planning/build/fill-report.md        —— 填充报告(当 claim 读)
+6. diff 命令(任务描述中给出,如 git diff <base>..<head>)
 ```
+
+**决策轨迹的用法:** 实现与契约不符时,先查 decisions.md——写法符合某条决策(D-N)的取舍 → 报"契约滞后于决策"(non-critical,修契约);不符合任何决策且偏离契约 → 正常缺陷(critical 按标准定级)。**决策轨迹不是免罪牌**:决策同样违反宪法/安全底线时,照常报 critical 并注明决策编号。
 
 **注意:** 任务描述中不会给你实现者的过程叙事——这是有意设计,防止被带偏。只依据规范、diff、命令输出。
 
@@ -106,7 +134,7 @@ git diff <base>..<head>          # 再读细节
 **每个结论必须独立成立,附证据:**
 
 1. **契约合规** —— 每条验收标准是否满足?指向 diff 中的证据位置或你观察到的命令输出。
-2. **正确性** —— 逻辑、边界、错误处理、回归、测试是否成立。包括规范没写到但 diff 中暴露的问题。
+2. **正确性** —— 逻辑、边界、错误处理、回归、测试是否成立。包括规范没写到但 diff 中暴露的问题,以及 AI 代码套路清单(S1-S8)的扫描结果(命中即在此列出,全未命中则注明已扫)。
 3. **代码库一致性** —— 命名、结构、局部惯例是否与周边代码一致。
 
 ## 步骤 5: 写评审报告

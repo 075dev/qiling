@@ -252,8 +252,11 @@ phase: 1
 generated_at: "2026-08-28T15:39:02Z"
 generated_by: "器灵工作流 v0.4.1"
 ql_version: "0.4.1"
+git_commit: "demo0000"
 pr_url: "https://github.com/075dev/qiling/pull/1"
 status: "shipped"
+endpoints: ${endpointCount}
+events: ${eventCount}
 ---
 
 # 第 1 章 · 演示项目

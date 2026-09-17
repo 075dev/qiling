@@ -109,9 +109,11 @@ qiling/(器灵 v0.11.0)
 │   ├── ql-builder-coordinator.md    # 协调器:依赖分析、波次划分、派发、合并
 │   ├── ql-builder-worker.md         # Worker:单端点/事件,全新上下文,Git Worktree
 │   └── ql-reviewer.md               # 独立评审者:全新上下文,三结论,只评审不修复
-├── templates/                         # 13 个工件模板
+├── templates/                         # 15 个工件模板
 │   ├── openapi-spec.yaml
 │   ├── event-flow.md
+│   ├── decisions.md                   # 决策轨迹(设计选择的论证过程留痕)
+│   ├── constitution.md                # 项目宪法(MUST/SHOULD 红线,可选)
 │   ├── state.md
 │   ├── skeleton-plan.md
 │   ├── build-report.md                # 骨架/填充报告(含旅程日志)
@@ -127,6 +129,7 @@ qiling/(器灵 v0.11.0)
 ├── docs/
 │   ├── ARCHITECTURE.md                # 本文档
 │   ├── WALKING-SKELETON.md            # Walking Skeleton 方法论
+│   ├── REFERENCES.md                  # 重要参考项目(superpowers/OpenSpec/gsd-core 等)
 │   └── PARALLELIZATION.md             # 并行策略详细文档
 ├── scripts/validate.mjs
 └── package.json
@@ -177,12 +180,13 @@ qiling/(器灵 v0.11.0)
 **角色:** 独立评审者(交付前最后一道质量门)
 **特点:** **全新 200k token 上下文**,与实现者零共享记忆;由主会话直接派发(不经协调器);**只评审,不修复**
 **职责:**
-1. 读规范(OpenAPI + 流程图)、完整 diff(base..head)、验证摘要
-2. 对照契约与流程图逐条核对验收标准
-3. 抽查验证摘要可信度(不重跑已 PASS 的重型命令)
-4. 给三个独立结论:**契约合规 / 正确性 / 代码库一致性**,每个发现附证据(文件:行号或亲测命令输出)
-5. 写 `review.md`,裁定 `approved | criticals_found`
-6. 修复后复审受影响区域(最多 2 轮);两轮不收敛即上报僵局,不强行通过
+1. 读规范(OpenAPI + 流程图)、决策轨迹(decisions.md,若存在)、完整 diff(base..head)、验证摘要
+2. 对照契约与流程图逐条核对验收标准;实现与契约不符时先查决策轨迹,区分"实现错了"与"契约滞后于决策"
+3. 对照 AI 代码套路清单(S1-S8:mock 冒充实现、路由未接线、吞错误、全 200、契约字段未消费、测试只测 mock、占位残留、校验只在文档里)扫描 diff
+4. 抽查验证摘要可信度(不重跑已 PASS 的重型命令)
+5. 给三个独立结论:**契约合规 / 正确性(含套路扫描结果) / 代码库一致性**,每个发现附证据(文件:行号或亲测命令输出)
+6. 写 `review.md`,裁定 `approved | criticals_found`
+7. 修复后复审受影响区域(最多 2 轮);两轮不收敛即上报僵局,不强行通过
 
 ---
 

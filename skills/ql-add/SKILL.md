@@ -34,7 +34,7 @@ allowed-tools:
 **把新功能加进现有章节体系**,防范"加功能不走契约"和"文档与代码脱节":
 
 1. **定位** —— 判断新功能落在哪个章节/资源域:用户 `--at` 指定优先;留空则按契约与章节证据自动判断,歧义时询问
-2. **补契约** —— 新端点/事件**就地写入** openapi.yaml + event-flow.md(不另建第二份规范)
+2. **补契约** —— 新端点/事件**就地写入** openapi.yaml + event-flow.md(不另建第二份规范);新决策追加 `.planning/context/decisions.md`(冲突走"取代 D-N",不静默推翻)
 3. **增量构建** —— 派发协调器,任务范围限定为新端点/事件,波次并行实现(骨架 → 填充)
 4. **验证 + 评审** —— 与 `/ql-build` 同标准:契约符合性 + fresh evidence + `ql-reviewer` 三结论
 5. **更新章节** —— 对应章节文档同步更新;新建章节时按 `/ql-doc` 结构生成
@@ -51,6 +51,7 @@ allowed-tools:
 @../workflows/add.md
 @../templates/openapi-spec.yaml
 @../templates/event-flow.md
+@../templates/decisions.md
 </execution_context>
 
 <process>

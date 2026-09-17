@@ -102,6 +102,9 @@ Wave 2:依赖 Wave 1 的端点(并行)
 | **协调器精简** | 协调器只负责派发、合并、验证,~15% 上下文 |
 | **Worker 全新上下文** | 每个 worker 200k token 上下文,只读必要输入 |
 | **独立评审** | 验证通过后,全新上下文的 reviewer 对照规范 + diff + 验证摘要给三结论(契约合规/正确性/一致性),critical 阻断交付 |
+| **派发决策门** | 构建前三问(产物体积/独立性/交互性)+ 内联阈值(默认 2):小项目主会话内联构建,不付子代理冷启动开销;修复优先续接原 worker;任务卡共享前缀提升缓存命中 |
+| **决策轨迹** | 讨论中每个非显然设计选择落痕(决策/理由/否掉的备选/代价)到 decisions.md,append-only——worker 按设计意图填充,评审区分"实现错"与"契约滞后",加功能不静默推翻既有决策 |
+| **反套路评审** | reviewer 对照 8 条 AI 代码套路清单(mock 冒充实现、吞错误、契约字段未消费等)显式扫描,扫描结果可核 |
 | **Fresh evidence** | 每条验证命令记一行 PASS/FAIL/PRE-EXISTING;子代理报告只算声明,主会话亲自复核后才算通过 |
 | **不自动收尾** | 交付前呈现 branch/base/head,由用户选:创建 PR / 仅推送 / 保留本地 |
 
@@ -121,12 +124,13 @@ Wave 2:依赖 Wave 1 的端点(并行)
     "enabled": true,
     "max_concurrent": 5,
     "isolation": "worktree",
-    "auto_merge": true
+    "auto_merge": true,
+    "inline_threshold": 2
   }
 }
 ```
 
-`max_concurrent=5` 意味着同一波次最多同时 5 个 worker。
+`max_concurrent=5` 意味着同一波次最多同时 5 个 worker;`inline_threshold=2` 意味着端点+事件 ≤ 2 的小项目主会话内联构建,不派协调器。
 
 ---
 
@@ -181,9 +185,11 @@ qiling/(器灵)
 │   ├── ql-builder-coordinator.md  # 协调器(分析依赖、划分波次、派发、合并)
 │   ├── ql-builder-worker.md       # Worker(单端点/事件的全新上下文执行)
 │   └── ql-reviewer.md             # 独立评审者(全新上下文,三结论,只评审不修复)
-├── templates/                 # 13 个工件模板
+├── templates/                 # 15 个工件模板
 │   ├── openapi-spec.yaml
 │   ├── event-flow.md
+│   ├── decisions.md           # 决策轨迹(design 产出,add 追加,build/review/fix 消费)
+│   ├── constitution.md        # 项目宪法(MUST/SHOULD 红线,design 阶段可选建立)
 │   ├── state.md
 │   ├── skeleton-plan.md
 │   ├── build-report.md        # 骨架/填充报告(含旅程日志)
@@ -234,6 +240,7 @@ qiling/(器灵)
 - [架构说明](docs/ARCHITECTURE.md)
 - [Walking Skeleton 方法论](docs/WALKING-SKELETON.md)
 - [并行策略详细文档](docs/PARALLELIZATION.md)
+- [参考项目](docs/REFERENCES.md)
 
 ---
 

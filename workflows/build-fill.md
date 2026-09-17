@@ -3,7 +3,7 @@ step: build-fill
 points: build:fill:pre, build:fill:post
 agent-roles: ql-builder-coordinator, ql-builder-worker
 produces: filled code, fill-report.md, verification.md, 波次报告
-consumes: skeleton code, openapi.yaml, event-flow.md, skeleton-report.md
+consumes: skeleton code, openapi.yaml, event-flow.md, decisions.md(若存在), skeleton-report.md
 -->
 
 <purpose>
@@ -30,6 +30,8 @@ test -f .planning/build/skeleton-report.md || {
 
 ## 步骤 2: 派发协调器(填充阶段)
 
+**先过派发决策门(同 build-skeleton 步骤 0.5):** 任务数 ≤ `inline_threshold`(默认 2)→ **内联模式**,主会话直接逐端点替换 mock 为真实实现(错误处理 + 测试 + 原子提交同 worker 标准),完成后写 `.planning/build/fill-report.md`,跳到步骤 3;否则按下方派发。
+
 派发 `ql-builder-coordinator` 子智能体(全新上下文):
 
 ```
@@ -38,6 +40,7 @@ test -f .planning/build/skeleton-report.md || {
 输入:
 - .planning/context/openapi.yaml
 - .planning/context/event-flow.md
+- .planning/context/decisions.md(若存在)—— 决策轨迹:填充涉及契约未规定的细节(错误结构、分页、幂等)时,提取相关 D-N 条目注入 worker 任务卡,按决策精神补齐而非瞎猜
 - .planning/build/skeleton-report.md —— 骨架清单(所有端点已 mock,事件已连接)
 - .planning/config.json
 
@@ -72,7 +75,12 @@ worker 任务描述必须强调:
 - [ ] 测试覆盖率合理?
 - [ ] 没有遗留 mock?
 
-## 步骤 4: 自动验证(派发协调器第三轮)
+## 步骤 4: 自动验证
+
+**先过派发决策门:** 验证是**串行**流程,且步骤 5 主会话反正要亲自复核关键命令——小项目派协调器第三轮只剩冷启动开销,没有隔离收益(大 diff 的隔离收益属于填充与评审,不属于验证)。
+
+- **内联模式**(任务数 ≤ `inline_threshold`):主会话**亲自**执行下方全部验证项,逐条记入 verification.md,然后直接进步骤 5。
+- **编排模式**:按下方派发协调器。
 
 派发 `ql-builder-coordinator` 子智能体,执行验证阶段:
 
@@ -90,6 +98,7 @@ worker 任务描述必须强调:
 3. 测试套件:全部通过
 4. Lint / 类型检查:无错误
 5. 构建:成功
+6. 模板化残留扫描(可机检部分):对本次 diff 的文件 grep TODO/FIXME/placeholder/"临时"/示例数据字面量,命中列入 verification.md 待评审复核;行为级套路(mock 冒充实现、吞错误、契约字段未消费等)留给独立评审(S1-S8 清单)
 
 验证纪律(fresh evidence):
 - 每条命令记录一行:命令 + PASS/FAIL/PRE-EXISTING

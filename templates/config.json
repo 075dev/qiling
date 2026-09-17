@@ -24,7 +24,8 @@
     "wave_timeout_minutes": 30,
     "worker_timeout_minutes": 10,
     "worker_retry_count": 1,
-    "merge_strategy": "merge"
+    "merge_strategy": "merge",
+    "inline_threshold": 2
   },
   "ship": {
     "auto_pr": true,

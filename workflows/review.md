@@ -3,7 +3,7 @@ step: review
 points: build:review:pre, build:review:post
 agent-roles: ql-reviewer
 produces: review.md, (修复时)修复提交 + 更新的 verification.md
-consumes: openapi.yaml, event-flow.md, verification.md, fill-report.md, base..head diff
+consumes: openapi.yaml, event-flow.md, decisions.md(若存在), verification.md, fill-report.md, base..head diff
 -->
 
 <purpose>
@@ -54,6 +54,7 @@ HEAD=$(git rev-parse HEAD)
 输入:
 - 工作目录:[工作区绝对路径]
 - 规范:.planning/context/openapi.yaml + .planning/context/event-flow.md
+- 设计意图:.planning/context/decisions.md(若存在)—— 决策轨迹,用于区分"实现错了"与"契约滞后于决策"
 - 验证摘要:.planning/build/verification.md(每条命令一行 PASS/FAIL/PRE-EXISTING)
 - 构建报告:.planning/build/fill-report.md(当 claim 读,不当事实)
 - diff 范围:git diff <BASE>..<HEAD>
@@ -63,10 +64,11 @@ HEAD=$(git rev-parse HEAD)
 
 要求:
 1. 三个独立结论:契约合规 / 正确性 / 代码库一致性
-2. 每个发现附证据(文件:行号 或 你亲自跑的命令输出)
-3. 验证摘要中已 PASS 的命令不重跑;缺证据用最廉价命令补
-4. verdict: approved | criticals_found
-5. 你不修改任何业务代码
+2. 对照 AI 代码套路清单(S1-S8,见 ql-reviewer 定义)扫描 diff,结果写入正确性结论
+3. 每个发现附证据(文件:行号 或 你亲自跑的命令输出)
+4. 验证摘要中已 PASS 的命令不重跑;缺证据用最廉价命令补
+5. verdict: approved | criticals_found
+6. 你不修改任何业务代码
 ```
 
 ## 步骤 3: 读 review.md 处理裁定
@@ -86,6 +88,7 @@ VERDICT=$(grep "^verdict:" .planning/build/review.md | awk '{print $2}')
 对每个 critical 发现:
 
 1. **定向修复** —— 小修(< 3 文件)主会话直接修;大修派发 `ql-builder-coordinator`,任务描述**只含** critical 发现清单 + 修复指引 + 相关文件边界,不含评审过程叙事。
+   **续接优先于冷启动:** 修复涉及原 worker 的实现区域时,优先续接原 worker(`SendMessage` 到其 agentId,附 critical 发现)——它的上下文完好:知道任务、代码结构与自己的实现取舍,无需重读任务卡与代码,首轮修复质量最高;原 worker 会话已不可续(崩溃/压缩/跨会话)才派新 worker,并以单端点报告文件为持久记忆。连续两轮修复同一条 critical 后,**换全新 worker** 冷启动重做该任务(连续失败往往说明首轮实现思路错了,原上下文反而是包袱)。
 2. **只重跑受影响的验证** —— 不全量重跑;把新命令与结果(PASS/FAIL)追加到 verification.md。
 3. **再派发 ql-reviewer(第 N+1 轮)** —— 任务描述附上一轮 review.md 的待复审项;评审者只复审修复区域 + 确认未引入新 critical。
 4. 每轮递增 review.md 的 `round:` 字段。

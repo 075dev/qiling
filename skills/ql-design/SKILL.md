@@ -53,6 +53,7 @@ allowed-tools:
 **产出:**
 - `.planning/context/openapi.yaml`(已存在时**就地修订**,不另建第二份规范)
 - `.planning/context/event-flow.md`(同上)
+- `.planning/context/decisions.md`(决策轨迹:每个非显然设计选择留痕 decision/reason/alternatives/tradeoff,append-only)
 - `.planning/STATE.md` 更新
 
 **下一步:** `/ql-build`
@@ -62,6 +63,7 @@ allowed-tools:
 @../workflows/design.md
 @../templates/openapi-spec.yaml
 @../templates/event-flow.md
+@../templates/decisions.md
 </execution_context>
 
 <process>

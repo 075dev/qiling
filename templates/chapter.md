@@ -16,9 +16,11 @@ phase: [N]                                # 对应的 ql 循环编号
 generated_at: "[ISO timestamp]"
 generated_by: "器灵工作流 v0.4.0"
 ql_version: "0.4.0"
-git_commit: "[hash]"
+git_commit: "[hash]"                      # 本章快照对应的 HEAD(新鲜度基线,由流程写入,勿手填)
 pr_url: "[GitHub PR URL]"
 status: "shipped | shipped_with_gaps | shipped_failed"
+endpoints: [N]                            # 本章节 API 端点数(索引 README 汇总用,机器读)
+events: [M]                               # 本章节事件数(同上)
 ---
 
 # 第 N 章 · [章节标题]
@@ -332,5 +334,11 @@ timeline
 - 章节文档是**只读快照**——不要手改,改了会被下次 ship 覆盖
 - 章节文档**永远反映已合并的代码状态**——而不是"正在开发的"
 - 章节文档是**单一可信源**——开发者和 API 使用者都从这里查
+
+**严谨性原则(与索引 README 的"严谨性约定"一致):**
+- **证据锚点** —— §一 的 API 全部来自 `openapi.yaml`(单一可信源);§二 的流程数据全部来自构建/验证报告与 git log,不得凭记忆补写
+- **未检出显式声明** —— 缺失的报告/字段写"未检出(Not detected)"+ 原因,禁止留空或编造
+- **推断必须标注** —— 任何推断内容(如"该错误码疑似…")一律带"(推断)"标记
+- **不画假图** —— mermaid 时序图中的波次数/端点数必须是报告中的真实值
 
 </purpose>

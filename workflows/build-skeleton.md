@@ -3,7 +3,7 @@ step: build-skeleton
 points: build:skeleton:pre, build:skeleton:post
 agent-roles: ql-builder-coordinator, ql-builder-worker
 produces: skeleton code, skeleton-report.md, 波次报告
-consumes: openapi.yaml, event-flow.md
+consumes: openapi.yaml, event-flow.md, decisions.md(若存在)
 -->
 
 <purpose>
@@ -63,6 +63,27 @@ base_sha: <sha>
 - [ ] 当前分支非 main/master(或已建特性分支)
 - [ ] `.planning/context/openapi.yaml` 与 `event-flow.md` 存在且 YAML 可解析
 - [ ] `.planning/context/constitution.md` 状态已确认(存在则读,不存在记录"未建立")
+- [ ] **上下文压力自检** —— 本会话上下文已明显很重(大量讨论历史/多轮修复)时,先把状态落盘(STATE + 本清单),提示用户开新会话跑 `/ql-build` 续做(ql-next 会从磁盘推导断点),不要在腐化上下文里启动编排
+
+## 步骤 0.5: 派发决策门(内联 or 编排)
+
+**派发的理由是上下文隔离与并行加速,不是流程仪式。** 子代理冷启动 = 主对话读过的契约全部重读(缓存不命中)+ 摘要有损,小活上这笔开销买不到任何东西。
+
+```bash
+TASKS=$(端点数 + 事件数)   # 从 openapi.yaml 统计
+THRESHOLD=$(grep -o '"inline_threshold": *[0-9]*' .planning/config.json | grep -o '[0-9]*$' || echo 2)
+```
+
+**`TASKS <= THRESHOLD`(默认 2)→ 内联模式:** 主会话**不派协调器**,直接实现:
+
+- 按契约逐端点返回 mock、逐事件连接(与 worker 骨架同标准:无业务逻辑)
+- 同样遵守工作区门控(步骤 0):特性分支 + base_sha + 原子提交(每端点一个 commit)
+- 完成后**亲自** curl 每个端点 + 触发事件验证连通,按同格式写 `.planning/build/skeleton-report.md`(任务清单 + 连通性证据),再进入 `/ql-build` 填充阶段
+- 内联模式的验证与后续填充同样内联(见 build-fill 步骤 2 的轻量路径)
+
+**`TASKS > THRESHOLD` → 编排模式:** 按步骤 1 派发协调器(波次并行)。
+
+两个模式产出的 skeleton-report.md 格式完全一致——下游(填充、评审、文档)不感知模式差异。
 
 ## 步骤 1: 派发协调器
 
@@ -77,6 +98,7 @@ base_sha: <sha>
 - .planning/config.json —— 工作流配置
 - .planning/STATE.md 中的 work_branch —— worker worktree 基于该分支(绝不基于 main/master)
 - .planning/context/constitution.md(若存在)—— 项目宪法,划分波次与声明 Files 边界前先过一遍:MUST 红线不得安排违反宪法的任务;SHOULD 违规在阶段报告豁免表登记
+- .planning/context/decisions.md(若存在)—— 决策轨迹:提取每张任务卡**只与该任务相关的条目**注入(见协调器定义第 8 项),worker 据此理解设计意图,而非自行发明
 
 阶段:skeleton(每个端点返回 mock,事件能传递)
 

@@ -42,6 +42,7 @@ color: yellow
   - OpenAPI 契约路径: .planning/context/openapi.yaml
   - 相关 schema: [User, Order] (仅这些)
   - 相关流程图: [user-created-events] (仅这些)
+  - 相关决策: [D3: 错误模型统一为 BUSINESS_ERROR](仅相关条目,可选)
   - 上阶段报告: [skeleton-report.md 或 fill-report.md,可选]
 文件边界:
   - 可修改: src/routes/users.ts, tests/routes/users.test.ts
@@ -74,6 +75,10 @@ cat .planning/context/openapi.yaml
 
 # 相关流程图
 # 你的任务可能涉及 user.created 事件
+
+# 相关决策(若任务卡给了 D-N 条目)
+# 契约没规定的细节(错误响应结构、分页约定、幂等语义)按决策精神补齐,不自行发明——
+# 决策原文在 .planning/context/decisions.md,只读任务卡点名的条目
 
 # 上阶段报告(若填充阶段)
 cat .planning/build/skeleton-report.md
@@ -225,16 +230,14 @@ status: success | partial | failed
 
 ## 步骤 9: 返回
 
-返回给协调器:
-- 状态:`success` | `partial` | `failed`
-- 文件清单
-- 提交 hash
-- 报告路径
-- **风险(risks)**:本实现中为后续波次埋下的假设、依赖或注意点(无则写"无")
-- **Completion Notes**:给下一波次 worker 的一段话(接口偏差、踩坑、约定;无则写"无")
-- 任何阻塞或需关注事项
+**回话压缩契约(回流主对话的信息必须短而结构化):** 你返回的内容会常驻协调器上下文、并被后续每一轮重读——详尽内容写进步骤 8 的报告文件,回话只给以下四件套,不做过程叙事:
 
-**不要返回** 实现的完整内容(协调器不需要)。
+- 状态:`success` | `partial` | `failed`
+- 文件清单 + 提交 hash
+- 一行验证摘要(如"npm test -- users 12/12 PASS + curl 201 匹配 schema")
+- 报告路径 + **风险(risks)**(本实现中为后续波次埋下的假设、依赖或注意点,无则写"无") + **Completion Notes**(给下一波次 worker 的一段话,无则写"无")
+
+细节按需读报告文件,不要灌进回话。**不要返回** 实现的完整内容(协调器不需要)。
 
 </execution_flow>
 

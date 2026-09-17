@@ -23,6 +23,7 @@ consumes: STATE.md, 磁盘产物(openapi.yaml / verification.md / review.md / pr
 S_STATE=.planning/STATE.md
 S_CONTRACT=.planning/context/openapi.yaml
 S_FLOW=.planning/context/event-flow.md
+S_DECISIONS=.planning/context/decisions.md
 S_CONST=.planning/context/constitution.md
 S_SKEL=.planning/build/skeleton-report.md
 S_FILL=.planning/build/fill-report.md
@@ -30,7 +31,7 @@ S_VERIF=.planning/build/verification.md
 S_REVIEW=.planning/build/review.md
 S_LEDGER=.planning/build/progress.md
 
-for f in $S_STATE $S_CONTRACT $S_FLOW $S_CONST $S_SKEL $S_FILL $S_VERIF $S_REVIEW $S_LEDGER; do
+for f in $S_STATE $S_CONTRACT $S_FLOW $S_DECISIONS $S_CONST $S_SKEL $S_FILL $S_VERIF $S_REVIEW $S_LEDGER; do
   test -f "$f" && echo "有 $f" || echo "无 $f"
 done
 

@@ -50,7 +50,14 @@
         "wave_timeout_minutes": { "type": "integer", "minimum": 1 },
         "worker_timeout_minutes": { "type": "integer", "minimum": 1 },
         "worker_retry_count": { "type": "integer", "minimum": 0, "maximum": 5 },
-        "merge_strategy": { "type": "string", "enum": ["merge", "rebase", "squash"] }
+        "merge_strategy": { "type": "string", "enum": ["merge", "rebase", "squash"] },
+        "inline_threshold": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10,
+          "default": 2,
+          "description": "内联阈值:任务数 ≤ 此值时构建/验证在主对话内联执行,不派发协调器(0 = 总是派发)。省子代理冷启动开销,保主对话 prompt cache"
+        }
       }
     },
     "ship": {

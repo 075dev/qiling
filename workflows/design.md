@@ -2,14 +2,14 @@
 step: discuss
 points: discuss:pre, discuss:post
 agent-roles: ql-design-coach
-produces: openapi.yaml, event-flow.md, STATE.md
+produces: openapi.yaml, event-flow.md, decisions.md, STATE.md
 consumes: (首次无,后续读 STATE.md)
 -->
 
 <purpose>
-通过对话讨论,产出 AI 自动构建所需的输入:**OpenAPI 3.1 契约 + Mermaid 事件流程图**。
+通过对话讨论,产出 AI 自动构建所需的输入:**OpenAPI 3.1 契约 + Mermaid 事件流程图 + 决策轨迹(decisions.md)**。
 
-这是新设计的核心变化——讨论产出**机器可执行**的规范,而非模糊的"决策记录"。
+这是新设计的核心变化——讨论产出**机器可执行**的规范,而非模糊的"决策记录"。契约与流程图给构建**结论**,决策轨迹给构建**论证过程**——为什么这样设计、否掉了什么、代价是什么。下游的 worker、评审者、修 Bug 流程据此不必重新猜测设计意图。
 </purpose>
 
 <available_agent_types>
@@ -37,7 +37,7 @@ git log --oneline -10     # 近期在做什么
 
 勘察后只问**真正的产品决策**:端点取舍、错误语义、事件边界、状态转换。
 
-**契约已存在(再次进入讨论):** 就地编辑 `.planning/context/openapi.yaml` 与 `event-flow.md`——只改受本次讨论影响的部分,**绝不另建第二份规范文档**,不重新生成未受影响的章节。
+**契约已存在(再次进入讨论):** 就地编辑 `.planning/context/openapi.yaml` 与 `event-flow.md`——只改受本次讨论影响的部分,**绝不另建第二份规范文档**,不重新生成未受影响的章节。决策轨迹同理**就地追加**:本轮新产生的权衡写新行(编号延续);若与既有 D-N 冲突,走"取代 D-N"流程并同步修订契约,**不允许静默推翻**。
 
 **Never-Ask 降级:** 若 `AskUserQuestion` 不可用或调用被拒(返回 Never-Ask),**仅对当前这一个决策**自决并继续:
 
@@ -72,11 +72,13 @@ EOF
 **澄清纪律:**
 
 - 每个问题带**推荐选项**(首选在前,标注推荐 + 一句理由),用户可直接接受
+- **被排除的方向不进选项** —— 已被宪法、既有契约或仓库事实排除的方案,不占用选项位(不为注定被否的方向浪费一个提问,选项表是稀缺资源)
 - 一次只问一个;候选问题超过 5 个时按**影响 × 不确定性**排序,只问前 5 个高影响问题,其余登记为默认假设
 - **每个答案立即回写产物,不留聊天记录**:
   - 端点级约束 → openapi.yaml 对应 path 的 `description` 或 `x-ql-*` 扩展字段
   - 全局约定 → `info.description` 或 event-flow.md 约定段
   - 并在 openapi.yaml 追加 `## Clarifications` 注释段:`- Q: <问题> → A: <答案>(YYYY-MM-DD)`
+- **非显然决策即时落决策轨迹** —— 讨论中每个需要权衡的选择(端点取舍、错误模型选型、事件边界、状态机设计、schema 拆分 vs 合并),按 `@../templates/decisions.md` 立即写入 `.planning/context/decisions.md` 一行:decision / reason / alternatives / tradeoff。质量三标准:**reason 必须绑定本次讨论的具体细节**(不写"更优雅"),**alternatives 必须是真实考虑过的命名方案**(不是稻草人),**tradeoff 必须是真代价**(不是审美托词)。用户显式指令记 Clarifications、宪法已有条文、无争议实现细节——这三类**不 trace**。一轮典型 5~10 条
 - 环境勘察已能回答的,直接采用并登记为"默认假设",不再问
 
 **用 `AskUserQuestion` 分轮提问。**
@@ -215,6 +217,7 @@ ambiguity = 1 − (目标×0.4 + 约束×0.3 + 验收×0.3) / 10
 
 - **ambiguity > 0.2 → 不冻结**,回到步骤 2 继续澄清(只问拉低评分的维度)
 - **实体收敛检查** —— 核心 schema/资源名与上一轮讨论相比是否稳定(改名算收敛,新增算抖动)?连续两轮无新增实体才允许冻结
+- **决策轨迹检查** —— `.planning/context/decisions.md` 存在且有条目。**0 条 = 可疑信号**:大概率全是默认假设在推进、没做真实权衡——回步骤 2 抽查 2~3 个"看似显然"的选择(错误模型、分页约定、幂等语义),确认它们真的是显然的而非被跳过的
 - 冻结时在 STATE 记录评分表(Clarity Breakdown)与默认假设清单(Assumptions Exposed),供后续阶段否决
 
 **讨论结束从主观判断变成可展示的数值。**
@@ -237,6 +240,7 @@ event_messages_count: M
 - 事件消息数量
 - 关键流程图场景摘要
 - 澄清回写条数与默认假设清单
+- 决策轨迹条数(active),一两句点出最关键的取舍(供用户复核"否掉的备选"是否可接受)
 - 宪法状态(新建 / 已存在 / 用户跳过)
 - 下一步:`/ql-build`
 

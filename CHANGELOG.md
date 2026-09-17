@@ -5,6 +5,112 @@
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.14.0] - 2026-09-15
+
+### 新增:派发决策门——回答"串行任务该在主对话还是子代理执行"
+
+**调研背景:** 提出问题"子代理冷启动有上下文重复读取成本(缓存不命中),不能并行的串行任务是否应该留在主对话执行?"后,克隆并调研了 5 个参考项目(已记录到 [docs/REFERENCES.md](docs/REFERENCES.md),本地克隆于仓库外 `refs/`):obra/superpowers、Fission-AI/OpenSpec、open-gsd/gsd-core、code-yeongyu/oh-my-openagent、Yeachan-Heo/oh-my-claudecode。
+
+**调研结论(五项目从四个方向收敛到同一答案):**
+
+- **"能否并行"不是派发判据**——判据是三问:产物体积(细节会不会烧主对话上下文)、独立性需求(评审/验证必须派)、交互性需求(需用户输入的留主对话)
+- **小活一律内联**——superpowers 有实测回撤记录(串行 spec/plan 评审从子代理环改为内联清单,25 分钟 → 30 秒且质量相同);gsd-core 有数值阈值 `inline_plan_threshold`(默认 2,理由明写"省 ~14K token 子代理冷启动开销 + 保 prompt cache");OmO 三条内联豁免(trivially simple / **上下文已全部加载** / 派发开销超过任务复杂度);OmC:"不要为一次专注执行就能完成的工作搭建协调机制"
+- **状态传递靠磁盘工件,不靠对话记忆**;评审的独立上下文是功能不是成本(缓存不命中恰是评审公正性的来源);对冲冷启动靠续接与文件,不靠放弃派发
+
+**落地的修改:**
+
+- **`config.json` 新增 `parallelization.inline_threshold`(默认 2)**:端点+事件总数 ≤ 阈值时构建/验证主会话内联执行,不派协调器;设 0 = 总是派发
+- **`skills/ql-build` 新增阶段 0"派发决策门"**:派发前三问(产物体积/独立性/交互性)+ 内联阈值 + 反触发条款(单文件小修走 /ql-fix、单功能追加走 /ql-add,"一次专注执行就能完成"的工作不搭协调机制)
+- **`workflows/build-skeleton.md` 步骤 0.5**:内联/编排双模式分流——内联模式主会话直接实现骨架(同 worker 标准:特性分支 + base_sha + 原子提交 + 逐端点连通验证),skeleton-report.md 格式与编排模式完全一致,下游不感知模式差异;另加**上下文压力自检**(会话上下文已重时先落盘、提示开新会话续跑,不在腐化上下文里启动编排)
+- **`workflows/build-fill.md`**:填充阶段同门槛分流;**验证阶段改为轻量路径优先**——验证是串行流程且主会话反正要亲自复核(fresh evidence),内联模式主会话亲自跑全部验证项直接记 verification.md;编排模式维持派发(gsd-core 的波后合并门同理由 orchestrator 亲自跑,不信 worker 自检)
+- **`workflows/review.md` 修复循环新增"续接优先于冷启动"**:修复涉及原 worker 实现区域时优先续接原 worker(其上下文完好:知道任务、代码与实现取舍),会话不可续才派新 worker 并以单端点报告为持久记忆;连续两轮修复同一条 critical 后换全新 worker 冷启动重做(连续失败说明首轮思路错了,原上下文是包袱)(superpowers 同款规则)
+- **`agents/ql-builder-worker.md` 回话压缩契约**:回流协调器的信息限四件套结构化短回话(状态/文件与提交/一行验证摘要/报告路径+risks+Completion Notes),详尽内容只落盘报告文件——回话内容会常驻协调器上下文并被反复重读
+- **`agents/ql-builder-coordinator.md` 任务卡共享前缀**:同波次任务卡共同部分(全局约束/契约路径)前置且逐字一致、差异部分后置,让并行子代理之间命中 prompt 缓存
+- **新增 `docs/REFERENCES.md`**:记录 5 个参考项目(定位/本地路径/借鉴点)与五项目共同结论
+
+**验证:** `npm run validate` 通过;`npm run verify:flow` 20 项全绿;`npm run verify:schema` 通过(含新 inline_threshold 字段)。
+
+## [0.13.0] - 2026-09-15
+
+### 新增:决策轨迹 + 反套路评审——对标 design-blueprint 技能的两项机制移植
+
+调研 `design-blueprint` 技能(先出设计蓝图再动手的视觉设计工作流)后,把其中两个与器灵场景兼容的核心机制移植进来:**决策留痕(Decision Trace)** 与 **反 slop 显式清单**。其余机制(Orient 先勘察再提问、复用优先就地修订、默认假设分流、唯一停顿点)经核对在既有工作流中已有等价实现,不重复引入。
+
+**一、决策轨迹(`.planning/context/decisions.md`,新工件)**
+
+- **问题:** 契约只写"结论",不写"论证过程"——为什么错误模型这样设计、当时否掉了什么,只存在于当轮聊天里。三方因此是瞎子:worker(全新上下文)在契约没规定的细节上瞎猜;评审发现实现与契约不符时分不清"实现错了"还是"契约滞后于决策";/ql-add 补契约时可能静默推翻既有决策
+- **新增 `templates/decisions.md`** —— 决策账本模板:每条非显然设计选择落一行(decision / reason / alternatives / tradeoff / status / 日期)。**append-only**:推翻旧决策 = 旧行标 superseded + 新行注明"取代 D-N",禁止删改(与 review.md 处置账本同一纪律)
+- **质量三标准(写进模板与工作流):** reason 必须绑定本项目具体细节(不写"更优雅");alternatives 必须是真实考虑过的命名方案(不是稻草人);tradeoff 必须是真代价(不是审美托词)。用户显式指令、宪法条文、无争议实现细节**不 trace**;一轮典型 5~10 条
+- **`workflows/design.md` 接入:** 澄清纪律新增"非显然决策即时落痕";契约冻结门新增**决策轨迹检查**——0 条 = 可疑信号(大概率全靠默认假设推进、没做真实权衡),回步骤 2 抽查"看似显然"的选择;结束呈现 active 条数与最关键取舍
+- **下游消费全链路:**
+  - 协调器(coordinator)加载 decisions.md,每张 worker 任务卡注入**只与该任务相关的 D-N 条目**(防上下文膨胀)——worker 按设计意图补齐契约未规定的细节,不再瞎猜
+  - ql-reviewer 评审输入增加决策轨迹,新增裁定规则:实现与契约不符但符合某条决策 → 报"契约滞后于决策"(non-critical);决策同样违反宪法/安全底线时不是免罪牌,照常 critical
+  - `/ql-add` 步骤 3:新决策追加编号延续;与既有 D-N 冲突必须走"取代"流程并同步修订契约,**不允许静默推翻**
+  - `/ql-fix` 根因分析新增第五个来源"决策轨迹对照":异常行为符合某条决策的取舍 → 可能不是 bug 而是设计如此,修的是契约/文档滞后而非代码
+  - `/ql-next` 磁盘盘点纳入 decisions.md 存在性
+
+**二、反套路评审(AI 代码 slop 清单 S1-S8)**
+
+- **问题:** AI 生成的后端代码有稳定的失败模式(不是随机 bug,是同一些套路的反复出现),既有三结论评审未把它们显式化,漏检取决于评审者当轮"想没想到"
+- **ql-reviewer 新增 `<slop_patterns>` 清单**(8 条,每条带探测方式与定级):S1 mock 冒充实现 / S2 路由未接线 / S3 吞错误 / S4 全 200 综合征 / S5 契约字段未消费 / S6 测试只测 mock / S7 占位残留 / S8 校验只在文档里
+- **清单纪律:** 每条命中照常要证据(清单是注意力路标,不是降级证据要求的借口);报告必须写明扫描结果(命中几条或"全未命中"),做没做可核;按评审档位分层执行(THOROUGH 全量 / STANDARD 扫高发 S1-S4 / LIGHT 抽查)
+- **`workflows/build-fill.md`** 验证项新增第 6 条"模板化残留扫描"(可机检的 grep 部分:TODO/FIXME/占位/示例数据字面量);行为级套路留给独立评审
+- **`templates/review.md`** 结论二新增套路扫描结果表(inputs 同步登记 decisions.md)
+
+**其余补强:**
+
+- design.md 澄清纪律新增"**被排除的方向不进选项**"——已被宪法/既有契约/仓库事实排除的方案不占用选项位(借鉴 design-blueprint 的"不提议你会不得不撤回的东西")
+- `skills/ql-design`、`skills/ql-add`、`skills/ql-build` 描述同步;README 关键机制表新增"决策轨迹""反套路评审"两行;templates 数量 14 → 15,README / ARCHITECTURE 目录树补列 constitution.md(此前漏列)
+
+**验证:** `npm run validate` 通过(工件模板 15 个);`npm run verify:flow` 20 项全绿;`npm run verify:schema` 通过。
+
+## [0.12.0] - 2026-09-13
+
+### 优化:文档树产品化——对标 GitHub 同类项目(GSD map-codebase / RepoAgent / DeepWiki / OpenWiki)的全面严谨性升级
+
+文档树是插件的重中之重。本轮调研 GitHub 同类文档生成项目后,重写 `scripts/docsmap.mjs`(/ql-scan 渲染引擎)并对齐全部模板与工作流,把文档树从"扫描报告"升级为**清晰、严谨、可读性优秀的产品说明书**。
+
+**调研来源与可借鉴点:**
+
+| 项目 | 借鉴了什么 |
+|------|-----------|
+| GSD map-codebase(open-gsd/gsd-core 1.13.0) | 证据锚点强制(file:line)、"Not detected" 显式声明、`last_mapped_commit` 机器戳(shell 写入防"自信代理"跳过)、密钥扫描硬门控、断言门控、"Where to add new code" 指引、按角色路由 |
+| RepoAgent(OpenBMB) | 增量替换思路(对应 `--force` 重扫与 `--update-index` 只重建索引) |
+| DeepWiki / deepwiki-open | codemap 式导读(索引"按角色 × 意图"路由表)、Overview 先行 |
+| OpenWiki(LangChain) | git 基线打点、过期自查指引 |
+
+**修复的严谨性缺陷(docsmap.mjs 重写):**
+
+- **删除臆造图** —— 旧版启动流程 mermaid 是与项目无关的硬编码假图(A→B→C→D→E);新版只在使用真实检测值(package.json 入口 + start/dev 脚本,文件存在性已校验)时才画图,检不出则显式声明"未检出(Not detected)"+ 原因,断言 8 阻止假图
+- **修复路由/事件误报与漏报** —— 旧正则会把 `cache.get('x')`、`map.delete(k)` 误提取为 HTTP 路由;新版按接收者白名单(app/router/server/api + HTTP 动词)限定,单字母接收者额外要求路由语境;每条结果附 `文件:行号` 证据,断言 3 校验锚点数 ≥ 条目数
+- **修复文档承诺但代码缺失** —— `workflows/scan.md` 声称的 `--update-index` 参数在旧脚本中不存在;新版实现(只重建索引,不生成章节)
+- **新增密钥扫描硬门控** —— 产出文档后正则扫描(sk-/ghp_/AKIA/私钥头/Slack token),命中即失败(断言 9)
+- **新增新鲜度机器戳** —— frontmatter 写入 `last_mapped_commit`(git HEAD,由脚本写入而非 agent 自觉);索引页给读者过期自查指引(`git log --oneline <基线>..HEAD`)
+- **版本号单一来源** —— 旧脚本硬编码 0.5.0/0.7.0 混乱;新版一律读 package.json(断言 10)
+
+**补全的可读性(产品说明书化):**
+
+- **索引升级为说明书首页** —— 项目定位导读(package.json description)+ "按角色 × 意图"阅读路由表 + 章节列表(状态/来源/API 数/事件数/日期)+ 能力总览 + 新鲜度提示 + 严谨性约定五条
+- **章节新增 §二 技术栈/依赖/新代码放哪** —— 语言分布统计表(带占比)、框架/关键依赖推断表(标注"推断")、包管理器、真实依赖清单(旧版只让用户自己跑 `npm ls`)、"新代码放哪"指引表(GSD STRUCTURE.md 的核心价值)
+- **目录树不再静默截断** —— 80 项/深度 4 截断时显式提示(共 N 项,显示前 M 项);顶层目录带职责注释并标注"(推断)"
+- **未检出内容显式声明** —— 每个扫描节为空时写"未检出(Not detected)"+ 原因 + 建议(如"若使用装饰器路由,请先运行 /ql-design"),不再留空
+
+**断言门控从 7 条升级到 10 条**(新增:无假图、密钥扫描、版本号单一来源;强化:能力清单为空必须显式声明、目录树截断必须提示、证据锚点覆盖)。
+
+**模板与工作流对齐:**
+
+- `templates/chapter-index.md` 重写 —— 与 docsmap.mjs 产出逐节对齐(旧模板与脚本产出存在格式分裂),新增"严谨性约定"节与阅读路由
+- `templates/chapter.md` —— frontmatter 新增 `endpoints`/`events` 机器可读字段(供索引汇总),purpose 新增严谨性原则
+- `workflows/scan.md` 重写 —— 五条严谨性铁律、断言门控表、`--force`/`--update-index` 用法、漂移提示、同类项目对比表
+- `skills/ql-scan/SKILL.md` —— 严谨性五铁律入技能定义(违反任何一条即为缺陷)
+- `scripts/chapter-render.mjs` —— 演示渲染 frontmatter 同步 endpoints/events 字段
+
+**验证:** 本项目自扫 12 断言全绿;Express 风格 fixture 验证提取器(`app.get`/`router.post` 带行号提取,`cache.get` 不误报);validate / verify:flow(20 项)/ chapter:render(9 项)/ verify:schema 全部通过。
+
+### 版本号
+
+- `package.json` / `.zcode-plugin/{plugin,capability,marketplace}.json` / `marketplace.json`:0.11.0 → 0.12.0
+
 ## [0.11.0] - 2026-09-12
 
 ### 新增:`/ql-next` 下一步提示(状态感知入口)

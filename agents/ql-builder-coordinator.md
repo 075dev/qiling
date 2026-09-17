@@ -55,6 +55,7 @@ color: purple
 cat .planning/context/openapi.yaml
 cat .planning/context/event-flow.md
 cat .planning/config.json
+test -f .planning/context/decisions.md && cat .planning/context/decisions.md   # 决策轨迹:存在才读
 
 # 阶段特定
 test -f .planning/build/skeleton-report.md && cat .planning/build/skeleton-report.md
@@ -153,10 +154,13 @@ done
 5. **Interfaces**:Consumes(本任务消费的前序波次函数/端点签名)/ Produces(后续任务依赖的本任务产出——精确的名字与类型)
 6. 验收标准(可观察结果,如"curl 返回 201 + schema 匹配")
 7. 相关规范章节(只给该任务涉及的 OpenAPI schema/流程片段)
-8. 要求的验证(该任务要跑的命令)
-9. **上一波次备注**(波次 ≥ 2 时):注入上一波次所有 worker 的 Completion Notes 摘要、risks 与新增文件清单——接口偏差、踩坑、约定,防止波次间漂移
+8. **相关决策**(从 decisions.md 提取**只与该任务相关的条目**,如实现 GET /users 时涉及"错误模型统一为 BUSINESS_ERROR"的 D-N 原文——worker 是全新上下文,契约没规定的细节按决策精神补齐,而非瞎猜;无关条目不给,防上下文膨胀)
+9. 要求的验证(该任务要跑的命令)
+10. **上一波次备注**(波次 ≥ 2 时):注入上一波次所有 worker 的 Completion Notes 摘要、risks 与新增文件清单——接口偏差、踩坑、约定,防止波次间漂移
 
 **禁占位符:** 派发前自查任务卡,出现"待定 / TBD / 适当处理 / 参考任务 N / 同上"即为派发失败——先补全再派发。worker 可能乱序阅读任务卡,每个任务卡必须独立完备。
+
+**同波次任务卡共享前缀(缓存友好):** 同一波次所有任务卡,把**共同部分前置且逐字一致**(全局约束、契约路径、通用要求段),差异部分(任务名、Files 边界、验收标准)后置——前缀一致的并行派发能让子代理之间命中 prompt 缓存,显著降低冷启动 token 成本。差异内容绝不挪进公共段凑数。
 
 **绝不传递**会话历史、实现叙事或无关任务的细节。
 
@@ -172,6 +176,7 @@ Agent(
   - OpenAPI 契约:.planning/context/openapi.yaml
   - 相关 schema:User, Order (从依赖分析得出)
   - 相关流程图:user-created-events (从依赖分析得出)
+  - 相关决策:D3(错误模型统一为 BUSINESS_ERROR,响应结构见 decisions.md)(仅相关条目,无则省略)
   - 上阶段报告:[skeleton-report.md 或 fill-report.md,若存在]
 Files 边界:
   - 允许创建:src/routes/orders.ts, tests/routes/orders.test.ts

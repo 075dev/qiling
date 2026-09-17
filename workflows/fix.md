@@ -3,7 +3,7 @@ step: fix
 points: fix:pre, fix:post
 agent-roles: ql-reviewer(可选)
 produces: 修复代码, 回归测试, .planning/bugfix/NNN-<slug>.md, 章节变更日志追加
-consumes: bug 描述/报错信息, 相关代码, 近期提交
+consumes: bug 描述/报错信息, 相关代码, 近期提交, decisions.md(若存在)
 -->
 
 <purpose>
@@ -36,6 +36,7 @@ grep -rn "<报错关键词>" --include="*.ts" --include="*.js" src/ 2>/dev/null 
 - 报错信息原文、复现步骤(用户提供或日志推断)
 - 涉及的代码文件与调用链
 - 该代码的近期变更(`git log -p <file>`)
+- `.planning/context/decisions.md`(若存在)—— 决策轨迹,供步骤 2 判定"缺陷还是设计如此"
 - `.planning/bugfix/` 编号:现有最大 NNN + 1
 
 **行为变更前提:** 若 bug 涉及契约偏差(实际行为 ≠ openapi.yaml),先确认契约与实现哪个是对的——这决定修代码还是修契约。
@@ -61,7 +62,7 @@ grep -rn "<报错关键词>" --include="*.ts" --include="*.js" src/ 2>/dev/null 
 
 ## 步骤 2: 根因分析
 
-**本步骤结束前,工作区不得出现任何修复 diff。** 从四个来源交叉定位根因:
+**本步骤结束前,工作区不得出现任何修复 diff。** 从五个来源交叉定位根因:
 
 | 来源 | 用法 |
 |------|------|
@@ -69,6 +70,7 @@ grep -rn "<报错关键词>" --include="*.ts" --include="*.js" src/ 2>/dev/null 
 | `git blame` / `git log -p` | 该行为何时引入?伴随哪个功能? |
 | 边界插桩 | 在怀疑路径打日志/断点,缩小范围 |
 | 契约对照 | 实现与 openapi.yaml/event-flow.md 的偏差 |
+| 决策轨迹对照 | `.planning/context/decisions.md`(若存在):行为异常处的写法若**符合某条决策**的取舍(如"按 D3 牺牲一致性换性能"),它可能不是 bug 而是设计如此——修的是契约/文档的滞后,不是代码;**不符合**任何决策且偏离契约 → 正常缺陷路径 |
 
 **模式分析:** 找同库中类似的正常实现,完整阅读,穷举工作代码与损坏代码之间的每一处差异——不预设"这个无关"。
 

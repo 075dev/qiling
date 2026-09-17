@@ -1,7 +1,7 @@
 {
   "name": "qiling",
   "displayName": "器灵 Zcode 工作流",
-  "version": "0.11.0",
+  "version": "0.14.0",
   "description": "器灵 Zcode 工作流插件:三步循环 定方案(ql-design)→ 写代码(ql-build,波次并行)→ 交付(ql-deliver),外加修 Bug(ql-fix)、加功能(ql-add)、章节文档(ql-doc)与项目扫描(ql-scan)。",
   "author": {
     "name": "ZcodePlugin",

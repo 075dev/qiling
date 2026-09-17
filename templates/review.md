@@ -16,6 +16,7 @@ waive_reason:     # 仅 verdict: waived 时必填(接受哪些 critical、为什
 inputs:
   - openapi.yaml
   - event-flow.md
+  - decisions.md        # 决策轨迹(若存在):区分"实现错"与"契约滞后于决策"
   - verification.md
   - fill-report.md
 ---
@@ -40,6 +41,12 @@ inputs:
 ## 结论二:正确性
 
 逻辑、边界、错误处理、回归、测试成立性。包括规范未写但 diff 暴露的问题。
+
+**AI 代码套路扫描(S1-S8):** [已扫 8 条,命中 N 条 —— 每条命中列证据;全未命中写"未命中"。清单见 ql-reviewer 定义]
+
+| # | 套路 | 结果 | 证据 |
+|---|------|------|------|
+| S1-S8 | [命中项填套路名] | ❌ / ✅ 未命中 | [文件:行号 或 命令输出] |
 
 ## 处置账本(Review Dispositions Ledger,append-only)
 
