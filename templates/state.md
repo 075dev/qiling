@@ -9,6 +9,7 @@
 ```markdown
 ---
 ql_state_version: '1.0'
+ql_version: '<器灵插件版本,如 0.15.0——升级迁移锚点,由 /ql-design 初始化写入、/ql-update 维护>'
 current_phase: 1
 status: discussing | discussed | skeleton_complete | verified | reviewed | shipped
 work_branch: <特性分支名>

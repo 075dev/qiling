@@ -73,7 +73,7 @@ if (marketplace) {
 }
 
 // 4. commands/ 与 skills/ 一致性
-const expectedCommands = ['ql-design', 'ql-build', 'ql-deliver', 'ql-doc', 'ql-scan', 'ql-fix', 'ql-add', 'ql-next'];
+const expectedCommands = ['ql-design', 'ql-build', 'ql-deliver', 'ql-doc', 'ql-scan', 'ql-fix', 'ql-add', 'ql-next', 'ql-update'];
 const commandFiles = listFiles('commands', '.md');
 console.log(`  → 发现 ${commandFiles.length} 个 commands`);
 
@@ -91,7 +91,7 @@ for (const cmd of expectedCommands) {
   }
 }
 
-// 5. workflows/ 必须存在核心文件(方案/骨架/填充/评审/交付/章节/扫描/修复/加功能/下一步入口)
+// 5. workflows/ 必须存在核心文件(方案/骨架/填充/评审/交付/章节/扫描/修复/加功能/下一步入口/升级迁移)
 const requiredWorkflows = [
   'design.md',
   'build-skeleton.md',
@@ -102,7 +102,8 @@ const requiredWorkflows = [
   'scan.md',
   'fix.md',
   'add.md',
-  'next.md'
+  'next.md',
+  'update.md'
 ];
 
 const workflowFiles = listFiles('workflows', '.md');
@@ -263,13 +264,100 @@ check(existsSync(join(ROOT, 'docs/ARCHITECTURE.md')), 'docs/ARCHITECTURE.md 必�
 check(existsSync(join(ROOT, 'docs/WALKING-SKELETON.md')), 'docs/WALKING-SKELETON.md 必须存在');
 check(existsSync(join(ROOT, 'docs/PARALLELIZATION.md')), 'docs/PARALLELIZATION.md 必须存在');
 check(existsSync(join(ROOT, 'docs/CHAPTER-ARCHITECTURE.md')), 'docs/CHAPTER-ARCHITECTURE.md 必须存在');
+check(existsSync(join(ROOT, 'docs/RELEASE-CHECKLIST.md')), 'docs/RELEASE-CHECKLIST.md 必须存在(发版检查单)');
 check(existsSync(join(ROOT, 'marketplace.json')), 'marketplace.json 必须存在(Zcode 插件市场 manifest)');
 
 // 11. 验证脚本
 check(existsSync(join(ROOT, 'scripts/chapter-render.mjs')), 'scripts/chapter-render.mjs 必须存在(端到端章节渲染)');
 check(existsSync(join(ROOT, 'scripts/docsmap.mjs')), 'scripts/docsmap.mjs 必须存在(文档树渲染)');
+check(existsSync(join(ROOT, 'scripts/migrate.mjs')), 'scripts/migrate.mjs 必须存在(升级迁移引擎)');
 check(existsSync(join(ROOT, 'scripts/flow-verify.mjs')), 'scripts/flow-verify.mjs 必须存在');
 check(existsSync(join(ROOT, 'scripts/jsonschema-check.mjs')), 'scripts/jsonschema-check.mjs 必须存在');
+
+// 12. 自描述一致性:五处版本号必须一致(0.12→0.14 收尾时 capability.json 曾漏 bump)
+{
+  const zMarketplace = readJson('.zcode-plugin/marketplace.json');
+  const versions = [
+    ['package.json', pkg?.version],
+    ['marketplace.json', marketplace?.plugins?.[0]?.version],
+    ['.zcode-plugin/plugin.json', plugin?.version],
+    ['.zcode-plugin/marketplace.json', zMarketplace?.plugins?.[0]?.version],
+    ['.zcode-plugin/capability.json', capability?.version]
+  ];
+  if (versions.every(([, v]) => typeof v === 'string')) {
+    const ref = versions[0][1];
+    for (const [name, v] of versions) {
+      if (v !== ref) errors.push(`版本号不一致: ${name}=${v},应以 package.json 的 ${ref} 为准`);
+    }
+  } else {
+    warnings.push('部分清单缺 version 字段,跳过版本号一致性比对');
+  }
+
+  // 13. CHANGELOG 最新条目版本 = package.json 版本
+  try {
+    const changelog = readFileSync(join(ROOT, 'CHANGELOG.md'), 'utf8');
+    const latest = changelog.match(/^## \[(\d+\.\d+\.\d+)\]/m);
+    check(latest !== null, 'CHANGELOG.md 未找到版本条目(## [x.y.z])');
+    if (latest) {
+      check(latest[1] === pkg?.version,
+        `CHANGELOG 最新条目版本(${latest[1]})应等于 package.json 版本(${pkg?.version})`);
+    }
+  } catch {
+    errors.push('CHANGELOG.md 无法读取');
+  }
+
+  // 14. README / ARCHITECTURE 目录树清单与实际目录比对(templates / workflows / agents;
+  //     commands 因旧名别名混列不比对)
+  const extractTreeFiles = (mdText, dirName) => {
+    const lines = mdText.split(/\r?\n/);
+    const startRe = new RegExp(`^[├└]── ${dirName}/`);
+    let start = -1;
+    for (let i = 0; i < lines.length; i++) {
+      if (startRe.test(lines[i])) { start = i; break; }
+    }
+    if (start < 0) return null;
+    const files = new Set();
+    for (let i = start + 1; i < lines.length; i++) {
+      const line = lines[i];
+      if (/^(├──|└──) /.test(line)) break;   // 下一个顶级节点 = 本段结束
+      if (!/^[│ ]/.test(line)) break;
+      const clean = line.replace(/#.*$/, '');
+      for (const token of clean.split(/[\/\s|]+/)) {
+        if (/^[\w.-]+\.(md|yaml|json|mjs|js)$/.test(token)) files.add(token);
+      }
+    }
+    return files;
+  };
+  const compareTree = (docName, mdText, dirName, actualFiles) => {
+    const declared = extractTreeFiles(mdText, dirName);
+    if (declared === null) {
+      warnings.push(`${docName} 目录树未找到 ${dirName}/ 段,跳过清单比对`);
+      return;
+    }
+    for (const f of actualFiles) {
+      if (!declared.has(f)) errors.push(`${docName} 目录树 ${dirName}/ 漏列: ${f}`);
+    }
+    for (const f of declared) {
+      if (!actualFiles.includes(f)) errors.push(`${docName} 目录树 ${dirName}/ 多列(实际不存在): ${f}`);
+    }
+  };
+  try {
+    const readmeMd = readFileSync(join(ROOT, 'README.md'), 'utf8');
+    compareTree('README.md', readmeMd, 'templates', templateFiles);
+    compareTree('README.md', readmeMd, 'workflows', workflowFiles);
+    compareTree('README.md', readmeMd, 'agents', agentFiles);
+  } catch {
+    errors.push('README.md 无法读取,目录树比对失败');
+  }
+  try {
+    const archMd = readFileSync(join(ROOT, 'docs/ARCHITECTURE.md'), 'utf8');
+    compareTree('docs/ARCHITECTURE.md', archMd, 'templates', templateFiles);
+    compareTree('docs/ARCHITECTURE.md', archMd, 'workflows', workflowFiles);
+    compareTree('docs/ARCHITECTURE.md', archMd, 'agents', agentFiles);
+  } catch {
+    errors.push('docs/ARCHITECTURE.md 无法读取,目录树比对失败');
+  }
+}
 
 // 总结
 console.log('\n📊 验证结果:');
@@ -290,7 +378,7 @@ if (errors.length === 0) {
   console.log('\n✅ 骨架验证通过!');
   console.log('\n📋 设计概览:');
   console.log(`  • 核心循环:3 步(方案 → 构建 → 交付)+ 旁路(修 Bug / 加功能)`);
-  console.log(`  • 命令:${commandFiles.length} 个(ql-design、ql-build、ql-deliver、ql-doc、ql-scan、ql-fix、ql-add、ql-next)`);
+  console.log(`  • 命令:${commandFiles.length} 个(ql-design、ql-build、ql-deliver、ql-doc、ql-scan、ql-fix、ql-add、ql-next、ql-update)`);
   console.log(`  • 工作流:${workflowFiles.length} 个`);
   console.log(`  • 子智能体:${agentFiles.length} 个(design-coach + coordinator + worker + reviewer)`);
   console.log(`  • 工件模板:${templateFiles.length} 个(OpenAPI + Mermaid 流程图 + 波次报告 + 评审/修 Bug 报告)`);

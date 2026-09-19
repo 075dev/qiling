@@ -5,6 +5,46 @@
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.15.0] - 2026-09-19
+
+### 新增:`/ql-update` 升级迁移 + validate 自描述断言——插件升级后的工件一键迁移
+
+**问题:** 器灵本身迭代很快(0.9→0.14 五个版本引入 ledger 三态、决策轨迹、内联阈值等工件格式变化),但用户项目里的 `.planning/` 工件是初始化时从模板复制的快照——插件升级后旧项目永远停在旧格式:config.json 没有 `inline_threshold`,构建静默走默认值;STATE.md 无版本记录,连"这个项目是不是旧的"都无法判断。0.12→0.14 收尾时发现的 capability.json 版本漏 bump、README 模板计数错,也暴露了插件自身文档的同类漂移。
+
+**一、`/ql-update` 升级迁移(第 9 个核心命令)**
+
+- **架构:脚本管确定性,工作流管编排。** 机器可判定的变化由新引擎 `scripts/migrate.mjs` 执行(幂等、可测试);需要理解的差异(历史报告结构、章节文档滞后)由工作流转述建议,不代改
+- **迁移规则注册表(`MIGRATIONS`,当前 4 条):**
+  - M1(0.14.0):config.json 补 `parallelization.inline_threshold: 2`
+  - M2(0.15.0):STATE.md frontmatter 写入 `ql_version` 版本锚点——后续升级从特征推断变为精确比较
+  - M3(0.10.0,提示类):旧格式 verification.md 缺 `verified_at_commit` → 结论视为 STALE,交付前重跑验证
+  - M4(0.12.0,提示类):章节索引"器灵版本"字段滞后 → 建议 `/ql-scan --force`,产物不手改
+- **安全网:** 迁移前自动备份 `.planning/` → 项目根 `.planning-backups/.backup-<旧版本>/`;`--dry-run` 只展示计划;`--check` 只判断;**幂等**——重复执行报"无需迁移"
+- **用户内容永不触碰:** openapi.yaml、event-flow.md、decisions.md 是契约与决策留档,迁移永不修改;`.qiling/docs/` 是渲染产物,只建议重扫
+- **提示类规则的版本门:** 项目锚点 ≥ 规则引入版本即视为已覆盖,不再重复提示(自测曾抓到无版本门时永不收敛的缺陷)
+- **自测:** `--self-test` 在临时目录端到端验证 13 项断言(dry-run 不落盘、字段落盘、锚点写入、备份是旧态、幂等、提示触发、温和退出、check 不执行),`npm run migrate:test`
+
+**二、版本锚点机制**
+
+- `templates/state.md` frontmatter 新增 `ql_version` 字段(模板注释声明:ql-design 初始化写入、ql-update 维护)
+- `workflows/design.md` 步骤 1 初始化 STATE 时写入当前插件版本(无法确定时省略,由 ql-update 补写)
+- `workflows/next.md` 决策表新增第 6 行:有 `.planning/` 且 STATE 无 `ql_version` 锚点 → 建议 `/ql-update`(决策表 14 → 15 条)
+
+**三、validate 自描述一致性断言(防插件自身文档漂移)**
+
+- **五处版本号一致**(package.json、marketplace.json、.zcode-plugin/{plugin,marketplace,capability}.json)——正是 0.14 收尾时 capability.json 漏 bump 的事故模式
+- **CHANGELOG 最新条目版本 = package.json 版本**
+- **README / ARCHITECTURE 目录树与实际目录逐一比对**(templates / workflows / agents;commands 因旧名别名混列不比对)——正是 constitution.md 漏列、workflows 加文件漏同步的事故模式
+
+**四、发版检查单(`docs/RELEASE-CHECKLIST.md`)**
+
+- 机械层(validate 自动拦截)+ 梳理层(AI/人逐项确认:CHANGELOG、README 机制表、迁移规则登记、三件套同步、config 三处同步、决策表核对)分层固化
+- 工件格式变更必须登记迁移规则的纪律落进检查单,ql-update 体系随版本演进自我维护
+
+**配套:** README 命令 8 → 9(核心循环 + 2 旁路 + 1 维护)、workflows 10 → 11;ARCHITECTURE 同步;package.json 新增 `migrate` / `migrate:test` scripts。
+
+**验证:** `npm run validate` 通过(自描述断言上线时精确抓住 README/ARCHITECTURE 漏列 update.md 两处,证明有效);`npm run verify:flow` 20 项全绿;`npm run verify:schema` 通过;`npm run chapter:render` 9/9;`npm run migrate:test` 13/13。
+
 ## [0.14.0] - 2026-09-15
 
 ### 新增:派发决策门——回答"串行任务该在主对话还是子代理执行"

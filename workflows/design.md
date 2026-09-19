@@ -55,6 +55,7 @@ mkdir -p .planning/context .planning/build
 test -f .planning/STATE.md || cat > .planning/STATE.md <<EOF
 ---
 ql_state_version: '1.0'
+ql_version: '<当前器灵插件版本,从本插件 package.json 读取;无法确定时省略此行,由 /ql-update 补写>'
 current_phase: 1
 status: discussing
 ---

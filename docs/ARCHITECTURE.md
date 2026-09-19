@@ -84,8 +84,8 @@
 ## 目录结构
 
 ```
-qiling/(器灵 v0.11.0)
-├── commands/                          # 8 个命令入口(+4 个旧名别名)
+qiling/(器灵 v0.15.0)
+├── commands/                          # 9 个命令入口(+4 个旧名别名)
 │   ├── ql-scan.md                     # 扫描代码 → 文档树
 │   ├── ql-design.md                   # 定方案(契约 + 流程图)
 │   ├── ql-build.md                    # 写代码(波次并行)
@@ -93,17 +93,19 @@ qiling/(器灵 v0.11.0)
 │   ├── ql-doc.md                      # 章节文档
 │   ├── ql-fix.md                      # 修 Bug
 │   ├── ql-add.md                      # 加功能
-│   └── ql-next.md                     # 下一步提示(状态感知入口)
+│   ├── ql-next.md                     # 下一步提示(状态感知入口)
+│   └── ql-update.md                   # 升级迁移(插件更新后迁移项目工件)
 ├── skills/                            # 嵌套式 SKILL.md(与命令同名)
-│   └── ql-{scan,design,build,deliver,doc,fix,add,next}/SKILL.md
-├── workflows/                         # 10 个工作流实现
+│   └── ql-{scan,design,build,deliver,doc,fix,add,next,update}/SKILL.md
+├── workflows/                         # 11 个工作流实现
 │   ├── scan.md / design.md            # 初始化与方案
 │   ├── build-skeleton.md              # 波次并行骨架
 │   ├── build-fill.md                  # 波次并行填充 + 自动验证
 │   ├── review.md                      # 独立评审
 │   ├── deliver.md / doc.md            # 交付与章节渲染
 │   ├── fix.md / add.md                # 旁路:修 Bug 与加功能
-│   └── next.md                        # 状态判定 → 下一步建议
+│   ├── next.md                        # 状态判定 → 下一步建议
+│   └── update.md                      # 升级迁移(dry-run → 备份 → 迁移 → 提示)
 ├── agents/                            # 4 个子智能体
 │   ├── ql-design-coach.md          # 讨论引导
 │   ├── ql-builder-coordinator.md    # 协调器:依赖分析、波次划分、派发、合并
@@ -130,8 +132,10 @@ qiling/(器灵 v0.11.0)
 │   ├── ARCHITECTURE.md                # 本文档
 │   ├── WALKING-SKELETON.md            # Walking Skeleton 方法论
 │   ├── REFERENCES.md                  # 重要参考项目(superpowers/OpenSpec/gsd-core 等)
+│   ├── RELEASE-CHECKLIST.md           # 发版检查单(validate 断言 + AI 梳理清单)
 │   └── PARALLELIZATION.md             # 并行策略详细文档
 ├── scripts/validate.mjs
+├── scripts/migrate.mjs                # 升级迁移引擎(ql-update 的确定性层)
 └── package.json
 ```
 

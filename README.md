@@ -30,6 +30,7 @@ zcode plugin install .
 /ql-fix        # 修 Bug:复现 → 根因 → 最小修复 → 回归测试
 /ql-add        # 加功能:定位章节 → 补契约 → 增量构建 → 同步文档
 /ql-next       # 下一步提示:从磁盘事实推导当前位置,推荐下一步(只读零副作用)
+/ql-update     # 升级迁移:插件更新后,一键把项目工件(.planning/)迁移到新版格式
 ```
 
 > 0.6 及更早的旧命令名(`/ql-docsmap`、`/ql-discuss`、`/ql-ship`、`/ql-chapter`)保留为别名,调用时会提示新名称。
@@ -47,6 +48,7 @@ zcode plugin install .
 
 旁路:ql-fix(修 Bug)   —— 循环外的缺陷修复,复现优先
 旁路:ql-add(加功能)   —— 往现有章节体系补功能,可指定落点或自动判断
+维护:ql-update(升级迁移)—— 插件更新后一键迁移项目工件到新版格式
 ```
 
 每步防范一类失败:
@@ -58,6 +60,7 @@ zcode plugin install .
 | **交付** | PR、归档、循环复位 | 完成的工作未沉淀 |
 | **修 Bug(旁路)** | bugfix 报告 + 回归测试 | 没复现就改、修症状不修根因、修完复发 |
 | **加功能(旁路)** | 更新的契约 + 章节文档 + 增量代码 | 代码加了契约没加、功能进错章节、文档与代码脱节 |
+| **升级迁移(维护)** | 迁移后的工件 + 版本锚点 + 备份 | 插件升级了、项目工件停在旧格式,新旧机制静默漂移 |
 
 ### 三条核心原则
 
@@ -143,6 +146,7 @@ Wave 2:依赖 Wave 1 的端点(并行)
 /ql-deliver      # 交付:提交 PR,归档,推进下一阶段
 /ql-fix <描述>    # 修 Bug(随时可用,循环外)
 /ql-add <描述>    # 加功能(项目已初始化后,循环外)
+/ql-update        # 插件升级后跑一次:迁移项目工件到新版格式(dry-run 预览,自动备份)
 ```
 
 ---
@@ -151,7 +155,7 @@ Wave 2:依赖 Wave 1 的端点(并行)
 
 ```
 qiling/(器灵)
-├── commands/                  # 8 个命令入口(+4 个旧名别名)
+├── commands/                  # 9 个命令入口(+4 个旧名别名)
 │   ├── ql-scan.md             # 扫描代码 → 文档树
 │   ├── ql-design.md           # 定方案(契约 + 流程图)
 │   ├── ql-build.md            # 写代码(波次并行)
@@ -159,7 +163,8 @@ qiling/(器灵)
 │   ├── ql-doc.md              # 章节文档生成
 │   ├── ql-fix.md              # 修 Bug
 │   ├── ql-add.md              # 加功能
-│   └── ql-next.md             # 下一步提示(状态感知入口)
+│   ├── ql-next.md             # 下一步提示(状态感知入口)
+│   └── ql-update.md           # 升级迁移(工件 → 新版格式)
 ├── skills/                    # 嵌套式 SKILL.md(与命令同名)
 │   ├── ql-scan/SKILL.md
 │   ├── ql-design/SKILL.md
@@ -168,8 +173,9 @@ qiling/(器灵)
 │   ├── ql-doc/SKILL.md
 │   ├── ql-fix/SKILL.md
 │   ├── ql-add/SKILL.md
-│   └── ql-next/SKILL.md
-├── workflows/                 # 10 个工作流实现
+│   ├── ql-next/SKILL.md
+│   └── ql-update/SKILL.md
+├── workflows/                 # 11 个工作流实现
 │   ├── scan.md                # 目录扫描 → 文档树
 │   ├── design.md              # 讨论引导 → 契约
 │   ├── build-skeleton.md      # 波次并行骨架
@@ -179,7 +185,8 @@ qiling/(器灵)
 │   ├── doc.md                 # 章节渲染
 │   ├── fix.md                 # 修 Bug 指导
 │   ├── add.md                 # 加功能指导(定位 → 契约 → 增量构建)
-│   └── next.md                # 状态判定 → 下一步建议(决策表)
+│   ├── next.md                # 状态判定 → 下一步建议(决策表)
+│   └── update.md              # 升级迁移(dry-run → 备份 → 迁移 → 提示)
 ├── agents/                    # 4 个子智能体
 │   ├── ql-design-coach.md         # 讨论引导
 │   ├── ql-builder-coordinator.md  # 协调器(分析依赖、划分波次、派发、合并)
@@ -206,7 +213,8 @@ qiling/(器灵)
 │   ├── ARCHITECTURE.md
 │   ├── WALKING-SKELETON.md
 │   └── PARALLELIZATION.md     # 并行策略详细文档
-├── scripts/validate.mjs
+├── scripts/validate.mjs       # 骨架 + 自描述一致性验证
+├── scripts/migrate.mjs        # 升级迁移引擎(ql-update 的确定性层)
 ├── scripts/rename.mjs
 ├── scripts/convertClaudeCommandToClaudeSkill.mjs
 ├── scripts/convertClaudeAgentToZcodeAgent.mjs
@@ -221,8 +229,8 @@ qiling/(器灵)
 
 | 维度 | GSD Core | 本骨架 |
 |-----|----------|--------|
-| 核心循环 | 5 步 | **3 步 + 2 旁路 + 状态入口** |
-| 命令 | 70+ | **8** |
+| 核心循环 | 5 步 | **3 步 + 2 旁路 + 1 维护 + 状态入口** |
+| 命令 | 70+ | **9** |
 | 子智能体 | 35+ | **4**(coach + coordinator + worker + reviewer) |
 | 工作流 | 110+ | **10** |
 | 适配运行时 | 17+ | **1**(Zcode) |

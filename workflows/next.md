@@ -37,6 +37,7 @@ done
 
 # B. 状态字段的值(存在才读)
 grep "^status:" $S_STATE 2>/dev/null
+grep "^ql_version:" $S_STATE 2>/dev/null      # 版本锚点(无 = 旧版器灵初始化的项目)
 grep "^status:" $S_VERIF 2>/dev/null          # passed | gaps_found
 grep "^verdict:" $S_REVIEW 2>/dev/null        # approved | criticals_found | waived
 grep "^verified_at_commit:" $S_VERIF 2>/dev/null
@@ -64,15 +65,16 @@ grep -l "status: blocked" .planning/bugfix/*.md 2>/dev/null
 | 3 | ledger 存在且有 `status:FAIL` / `status:NOT_RUN` | 构建中断,有未完成任务 | **断点续跑** → `/ql-build`(从第一个非 PASS 继续) |
 | 4 | bugfix 报告有 `status: blocked` | 有未解决的缺陷 | 处理 blocked bug:`/ql-fix <同一 bug>`(读原报告的已排除假设) |
 | 5 | `.git/ql/worktrees/` 非空 | worker worktree 遗留 | 先清理 `git worktree remove`,再进下一步 |
-| 6 | verification.md 存在且 `verified_at_commit` 落后 HEAD | 验证已 STALE | 重跑验证 → `/ql-build`(验证阶段) |
-| 7 | verification `status: gaps_found` | 验证未通过 | 修复差距 → `/ql-build` 或按报告修复建议 |
-| 8 | review.md `verdict: criticals_found` | 评审有未闭环 critical | 按处置账本修复 → 复审(`/ql-build` 阶段 4) |
-| 9 | verification `passed` + review `approved`/`waived` + 有未提交变更 | 验证评审已过,工作未提交 | 提交变更 → `/ql-deliver` |
-| 10 | verification `passed` + review `approved`/`waived` + 工作区干净 | 本阶段完成 | `/ql-deliver` |
-| 11 | STATE `status: skeleton_complete` | 骨架已通,待填充 | `/ql-build`(自动进入填充) |
-| 12 | STATE `status: discussed` 或 契约存在且冻结门已过 | 方案就绪 | `/ql-build` |
-| 13 | STATE `status: discussing` 或 契约缺失/未冻结 | 讨论未完成 | `/ql-design`(继续澄清,读 STATE 的歧义评分) |
-| 14 | STATE `status: shipped` 且无更多阶段 | 里程碑完成 | 归档或新里程碑 → `/ql-design` 开新阶段 |
+| 6 | 有 `.planning/` 且 STATE.md 无 `ql_version` 锚点 | 项目建于旧版器灵,工件格式未随插件升级 | `/ql-update`(幂等:dry-run 预览 → 自动备份 → 迁移;已是最新时零改动) |
+| 7 | verification.md 存在且 `verified_at_commit` 落后 HEAD | 验证已 STALE | 重跑验证 → `/ql-build`(验证阶段) |
+| 8 | verification `status: gaps_found` | 验证未通过 | 修复差距 → `/ql-build` 或按报告修复建议 |
+| 9 | review.md `verdict: criticals_found` | 评审有未闭环 critical | 按处置账本修复 → 复审(`/ql-build` 阶段 4) |
+| 10 | verification `passed` + review `approved`/`waived` + 有未提交变更 | 验证评审已过,工作未提交 | 提交变更 → `/ql-deliver` |
+| 11 | verification `passed` + review `approved`/`waived` + 工作区干净 | 本阶段完成 | `/ql-deliver` |
+| 12 | STATE `status: skeleton_complete` | 骨架已通,待填充 | `/ql-build`(自动进入填充) |
+| 13 | STATE `status: discussed` 或 契约存在且冻结门已过 | 方案就绪 | `/ql-build` |
+| 14 | STATE `status: discussing` 或 契约缺失/未冻结 | 讨论未完成 | `/ql-design`(继续澄清,读 STATE 的歧义评分) |
+| 15 | STATE `status: shipped` 且无更多阶段 | 里程碑完成 | 归档或新里程碑 → `/ql-design` 开新阶段 |
 
 **判定纪律:**
 
