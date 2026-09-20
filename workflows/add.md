@@ -108,7 +108,7 @@ ls .qiling/docs/chapters/ 2>/dev/null
 
 ## 步骤 5: 验证 + 独立评审
 
-执行 `@../review.md` 工作流(与 `/ql-build` 阶段 3-4 同标准):
+执行 `@review.md` 工作流(与 `/ql-build` 阶段 3-4 同标准):
 
 1. 契约符合性:新增端点/事件逐一对照(既有端点不回归——跑全量测试)
 2. `ql-reviewer` 三结论评审;critical 修复后复审,最多 2 轮

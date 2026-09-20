@@ -103,9 +103,9 @@ allowed-tools:
 </objective>
 
 <execution_context>
-@../workflows/build-skeleton.md
-@../workflows/build-fill.md
-@../workflows/review.md
+@../../workflows/build-skeleton.md
+@../../workflows/build-fill.md
+@../../workflows/review.md
 @../docs/PARALLELIZATION.md
 </execution_context>
 

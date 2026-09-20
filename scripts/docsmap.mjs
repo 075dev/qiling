@@ -22,6 +22,9 @@
  *   --out <file>       —— 输出章节文件路径(默认自动)
  *   --force            —— 覆盖已存在的同 slug 章节(项目结构大改后重扫)
  *   --update-index     —— 只重建索引 .qiling/docs/README.md(不生成章节)
+ *   --patterns <file>  —— 自定义提取器配置(JSON 数组,补内置提取器测不到的注册风格):
+ *                          [{"name": "vscode 树视图", "regex": "createTreeView\\(\\s*['\"`]([^'\"`]+)", "glob": "*.ts"}]
+ *                          name=表标题;regex 的第 1 个捕获组 = 条目标识;glob 可选(默认全部代码文件)
  *
  * 输出:
  *   - .qiling/docs/chapters/chapter-NN-*.md(与 ql-doc 同 5 节结构)
@@ -241,15 +244,107 @@ function extractEvents() {
       // 接收者白名单(emitter/eventBus/bus/broker/io/pub 等)+ emit/publish/dispatch,
       // 组合歧义极小,直接采信;事件名限定为合法事件名形态
       const m = lines[ln].match(/\b(emitter|eventBus|event_bus|bus|broker|io|pub|publisher)\s*\.\s*(emit|publish|dispatch)\s*\(\s*['"`]([a-zA-Z0-9._:-]+)['"`]/);
-      if (!m) continue;
-      if (seen.has(m[3])) continue;
-      seen.add(m[3]);
-      events.push({ name: m[3], verb: m[2], file: f.path, line: ln + 1 });
+      if (m) {
+        if (seen.has(m[3])) continue;
+        seen.add(m[3]);
+        events.push({ name: m[3], verb: m[2], file: f.path, line: ln + 1 });
+        continue;
+      }
+      // VSCode EventEmitter 惯例:事件名在接收者属性上而非 fire 参数里
+      // (this._onDidX.fire(...) → 事件 onDidX)。命名惯例强(_on 前缀/*Emitter 后缀),歧义小
+      const fm = lines[ln].match(/\bthis\s*\.\s*(_?(?:on[A-Z][A-Za-z0-9]*|[A-Za-z0-9]*[Ee]mitter))\s*\.\s*fire\s*\(/);
+      if (fm) {
+        const name = fm[1].replace(/^_/, '');
+        if (seen.has(name)) continue;
+        seen.add(name);
+        events.push({ name, verb: 'fire', file: f.path, line: ln + 1 });
+      }
     }
   }
   return events.slice(0, 100);
 }
 const events = extractEvents();
+
+// === 步骤 4.5:提取命令/工具注册(插件 / MCP / CLI 等非 HTTP 项目的一等能力) ===
+const COMMAND_PATTERNS = [
+  // VSCode 命令注册:vscode.commands.registerCommand('ql.xxx', ...)(vscode. 前缀可省——模块内常见直接导入)
+  { re: /\b(?:vscode\s*\.\s*commands\s*\.\s*)?registerCommand\s*\(\s*['"`]([^'"`]+)['"`]/, kind: 'registerCommand' },
+  // MCP 工具注册:server.tool('name') / server.registerTool('name') / ctx.tool(...)
+  { re: /\b(?:server|mcp|ctx)\s*\.\s*(?:registerTool|tool)\s*\(\s*['"`]([^'"`]+)['"`]/, kind: 'mcp-tool' },
+  // CLI 子命令注册:program.command('name')(commander/yargs 风格)
+  { re: /\b(?:program|cli|app|cmd)\s*\.\s*command\s*\(\s*['"`]([^'"`]+)['"`]/, kind: 'cli-command' },
+];
+function extractCommands() {
+  const commands = [];
+  const seen = new Set();
+  for (const f of tree) {
+    if (f.type !== 'file' || !CODE_EXTS.test(f.path)) continue;
+    let content;
+    try { content = readFileSync(join(SCAN_PATH, f.path), 'utf8'); } catch { continue; }
+    const lines = content.split('\n').slice(0, 2000);
+    for (let ln = 0; ln < lines.length; ln++) {
+      for (const p of COMMAND_PATTERNS) {
+        const m = lines[ln].match(p.re);
+        if (!m) continue;
+        const key = `${p.kind} ${m[1]}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        commands.push({ name: m[1], kind: p.kind, file: f.path, line: ln + 1 });
+      }
+    }
+  }
+  return commands.slice(0, 100);
+}
+const commands = extractCommands();
+
+// === 步骤 4.6:自定义提取器(--patterns,补内置提取器测不到的注册风格) ===
+let customExtractors = [];
+if (opts.patterns) {
+  const patternsPath = toAbsDir(opts.patterns);
+  try {
+    const raw = JSON.parse(readFileSync(patternsPath, 'utf8'));
+    if (!Array.isArray(raw)) throw new Error('顶层必须是 JSON 数组');
+    customExtractors = raw.map((item, i) => {
+      if (!item || typeof item.name !== 'string' || typeof item.regex !== 'string') {
+        throw new Error(`第 ${i + 1} 项缺 name 或 regex 字段`);
+      }
+      let re;
+      try { re = new RegExp(item.regex); } catch (e) {
+        throw new Error(`第 ${i + 1} 项正则无效: ${e.message}`);
+      }
+      return { name: item.name, re, glob: item.glob || null };
+    });
+  } catch (e) {
+    console.error(`❌ --patterns ${opts.patterns} 加载失败: ${e.message}`);
+    process.exit(2);
+  }
+}
+function extractCustom() {
+  const hits = [];
+  for (const ext of customExtractors) {
+    const rows = [];
+    const seen = new Set();
+    for (const f of tree) {
+      if (f.type !== 'file' || !CODE_EXTS.test(f.path)) continue;
+      if (ext.glob && !f.path.split('/').pop().includes(ext.glob.replace(/\*/g, ''))) continue;
+      let content;
+      try { content = readFileSync(join(SCAN_PATH, f.path), 'utf8'); } catch { continue; }
+      const lines = content.split('\n').slice(0, 2000);
+      for (let ln = 0; ln < lines.length; ln++) {
+        const m = lines[ln].match(ext.re);
+        if (!m) continue;
+        const name = m[1] || m[0];
+        if (seen.has(name)) continue;
+        seen.add(name);
+        rows.push({ name, file: f.path, line: ln + 1 });
+      }
+    }
+    hits.push({ name: ext.name, rows: rows.slice(0, 100) });
+  }
+  return hits;
+}
+const customHits = extractCustom();
+const customTotal = customHits.reduce((a, h) => a + h.rows.length, 0);
 
 // === 步骤 5:命令与入口(启动链路只用真实检测值,检不出就不画图) ===
 const scripts = pkg && pkg.scripts ? Object.entries(pkg.scripts) : [];
@@ -313,7 +408,15 @@ const routeTable = routes.length
   : '未检出 HTTP 路由(Not detected)——未在路由语境文件(`*routes*`/`*router*`/`*controller*` 或 `app.xxx()` 调用)中发现端点声明。若项目使用其他路由风格(如装饰器/配置式路由),请人工补充或先运行 `/ql-design` 生成 OpenAPI 契约。';
 const eventTable = events.length
   ? `| 事件名 | 动作 | 证据(文件:行) |\n|--------|------|------------------|\n${events.map(e => `| \`${e.name}\` | ${e.verb} | \`${e.file}:${e.line}\` |`).join('\n')}`
-  : '未检出事件发布(Not detected)——未在事件语境文件中发现 `emitter.emit()` / `bus.publish()` 类调用。';
+  : '未检出事件发布(Not detected)——未在事件语境文件中发现 `emitter.emit()` / `bus.publish()` / `this._onX.fire()` 类调用。';
+const commandTable = commands.length
+  ? `| 名称 | 注册方式 | 证据(文件:行) |\n|------|----------|------------------|\n${commands.map(c => `| \`${c.name}\` | ${c.kind} | \`${c.file}:${c.line}\` |`).join('\n')}`
+  : '未检出命令/工具注册(Not detected)——未发现 `registerCommand` / MCP `server.tool` / CLI `program.command` 类调用。若项目有其他注册风格,用 `--patterns` 自定义提取器补充。';
+const customSection = customExtractors.length
+  ? customHits.map(h => h.rows.length
+    ? `**${h.name}**\n\n| 标识 | 证据(文件:行) |\n|------|------------------|\n${h.rows.map(r => `| \`${r.name}\` | \`${r.file}:${r.line}\` |`).join('\n')}`
+    : `**${h.name}**:未检出(Not detected)——自定义正则无命中。`).join('\n\n')
+  : '';
 
 // 启动链路:只有真实检出才画 mermaid;否则诚实声明 + 给出建议
 let bootSection;
@@ -352,6 +455,8 @@ scan_path: "${relative(ROOT, SCAN_PATH) || '.'}"
 scanned_entries: ${tree.length}
 routes_detected: ${routes.length}
 events_detected: ${events.length}
+commands_detected: ${commands.length}
+custom_extracts: ${customTotal}
 endpoints: ${routes.length}
 events: ${events.length}
 ---
@@ -377,6 +482,8 @@ events: ${events.length}
 | 命令数(npm scripts) | ${scripts.length} |
 | 路由数(带证据) | ${routes.length} |
 | 事件数(带证据) | ${events.length} |
+| 命令/工具注册数(带证据) | ${commands.length} |
+| 自定义提取数(--patterns) | ${customTotal} |
 | 状态 | initialized |
 
 ${PROJECT_DESC ? `**项目定位:** ${PROJECT_DESC}(来自 package.json description)\n\n` : ''}---
@@ -398,7 +505,14 @@ ${routeTable}
 
 ${eventTable}
 
----
+### 1.4 命令 / 工具注册(证据锚点)
+
+${commandTable}
+${customExtractors.length ? `
+### 1.5 自定义提取(--patterns)
+
+${customSection}
+` : ''}---
 
 ## 二、项目结构与启动流程
 
@@ -587,17 +701,17 @@ if (!UPDATE_INDEX_ONLY) {
   }
 
   // 断言 2:能力表非空,或显式声明"未检出"(不允许静默空白)
-  const hasCapability = scripts.length > 0 || routes.length > 0 || events.length > 0;
+  const hasCapability = scripts.length > 0 || routes.length > 0 || events.length > 0 || commands.length > 0 || customTotal > 0;
   const hasNotDetected = /未检出.*(Not detected)/.test(writtenChapter);
   if (hasCapability || hasNotDetected) {
-    ok(`断言 2:能力清单非空(scripts=${scripts.length}, routes=${routes.length}, events=${events.length})或已显式声明未检出`);
+    ok(`断言 2:能力清单非空(scripts=${scripts.length}, routes=${routes.length}, events=${events.length}, commands=${commands.length}, custom=${customTotal})或已显式声明未检出`);
   } else {
     err('断言 2:能力清单为空且未声明"未检出(Not detected)"');
   }
 
-  // 断言 3:路由/事件表每行都带 file:line 证据
+  // 断言 3:路由/事件/命令/自定义表每行都带 file:line 证据
   const evidenceRows = (writtenChapter.match(/`[^`\n]+\.\w+:\d+`/g) || []).length;
-  const needEvidence = routes.length + events.length;
+  const needEvidence = routes.length + events.length + commands.length + customTotal;
   if (evidenceRows >= needEvidence) {
     ok(`断言 3:证据锚点 ${evidenceRows} 处 ≥ 提取条目 ${needEvidence} 条(每条带 文件:行号)`);
   } else {

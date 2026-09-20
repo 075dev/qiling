@@ -18,11 +18,17 @@ consumes: openapi.yaml, event-flow.md, decisions.md(若存在)
 </available_agent_types>
 
 <runtime_compatibility>
-**子智能体派发:**
-- **Zcode:** 用 `Agent(subagent_type="ql-builder-coordinator", ...)` 派发协调器
-- 协调器内用 `Agent(subagent_type="ql-builder-worker", ...)` 并行派发多个 worker
+**子智能体派发(宿主上下文可用性矩阵):**
 
-**并行派发:** 同波次的所有 Agent 调用必须**并行执行**(在单次消息中发起),不要串行 await。
+| 派发者上下文 | 可派发 | 说明 |
+|--------------|--------|------|
+| 主会话 | ql-builder-coordinator、ql-reviewer | 编排模式入口;独立评审直接从主会话派 |
+| 协调器(子代理) | ql-builder-worker | **当且仅当宿主把该类型暴露给子代理上下文**——部分宿主只在主会话暴露子代理类型,子代理不继承 |
+| worker / reviewer | (无) | 叶子角色,不再派发 |
+
+- **Zcode:** 主会话用 `Agent(subagent_type="ql-builder-coordinator", ...)` 派发协调器;协调器内用 `Agent(subagent_type="ql-builder-worker", ...)` 并行派发 worker
+- **派发通道门控:** 协调器启动时先探测 worker 类型是否真实可用;不可用立即返回 `DISPATCH_CHANNEL_UNAVAILABLE` 并停止(见 agents/ql-builder-coordinator.md 步骤 0)。主会话收到该信号 → 改内联模式或换宿主,**绝不默许协调器降级到外部 CLI/子进程**(`--yolo` 类无人值守通道尤其禁止)
+- **并行派发:** 同波次的所有 Agent 调用必须**并行执行**(在单次消息中发起),不要串行 await
 </runtime_compatibility>
 
 <process>
@@ -63,6 +69,7 @@ base_sha: <sha>
 - [ ] 当前分支非 main/master(或已建特性分支)
 - [ ] `.planning/context/openapi.yaml` 与 `event-flow.md` 存在且 YAML 可解析
 - [ ] `.planning/context/constitution.md` 状态已确认(存在则读,不存在记录"未建立")
+- [ ] **实现基线判定** —— 读 decisions.md 是否有 spec-as-is/棕地决策,并抽查契约项在存量代码中的实现情况:全部无存量实现 → `greenfield`(缺省,骨架=mock);契约项已有存量实现 → `brownfield`(骨架=对齐存量,禁止 mock 化)。判定结果写入步骤 1 的派发任务卡;棕地而无对应决策 → 提示回 `/ql-design` 补一条 spec-as-is 决策
 - [ ] **上下文压力自检** —— 本会话上下文已明显很重(大量讨论历史/多轮修复)时,先把状态落盘(STATE + 本清单),提示用户开新会话跑 `/ql-build` 续做(ql-next 会从磁盘推导断点),不要在腐化上下文里启动编排
 
 ## 步骤 0.5: 派发决策门(内联 or 编排)
@@ -76,7 +83,7 @@ THRESHOLD=$(grep -o '"inline_threshold": *[0-9]*' .planning/config.json | grep -
 
 **`TASKS <= THRESHOLD`(默认 2)→ 内联模式:** 主会话**不派协调器**,直接实现:
 
-- 按契约逐端点返回 mock、逐事件连接(与 worker 骨架同标准:无业务逻辑)
+- 按契约逐端点/事件产出骨架(与 worker 同标准、无业务逻辑;greenfield=最小 mock,brownfield=spec-as-is 对齐存量——按步骤 0 的判定执行)
 - 同样遵守工作区门控(步骤 0):特性分支 + base_sha + 原子提交(每端点一个 commit)
 - 完成后**亲自** curl 每个端点 + 触发事件验证连通,按同格式写 `.planning/build/skeleton-report.md`(任务清单 + 连通性证据),再进入 `/ql-build` 填充阶段
 - 内联模式的验证与后续填充同样内联(见 build-fill 步骤 2 的轻量路径)
@@ -100,7 +107,9 @@ THRESHOLD=$(grep -o '"inline_threshold": *[0-9]*' .planning/config.json | grep -
 - .planning/context/constitution.md(若存在)—— 项目宪法,划分波次与声明 Files 边界前先过一遍:MUST 红线不得安排违反宪法的任务;SHOULD 违规在阶段报告豁免表登记
 - .planning/context/decisions.md(若存在)—— 决策轨迹:提取每张任务卡**只与该任务相关的条目**注入(见协调器定义第 8 项),worker 据此理解设计意图,而非自行发明
 
-阶段:skeleton(每个端点返回 mock,事件能传递)
+阶段:skeleton(实现基线:[greenfield|brownfield,来自步骤 0 判定];greenfield=每个端点返回 mock、事件能传递;brownfield=spec-as-is 对齐存量实现,禁止 mock 化)
+
+派发通道:你的 Agent 工具应包含 ql-builder-worker 子代理类型;若不可用,立即返回 DISPATCH_CHANNEL_UNAVAILABLE 并停止——禁止降级到外部 CLI/子进程派发(含 --yolo 类无人值守通道),由主会话改内联模式或换宿主
 
 你的产出:
 1. Walking Skeleton 代码
@@ -108,7 +117,7 @@ THRESHOLD=$(grep -o '"inline_threshold": *[0-9]*' .planning/config.json | grep -
 
 工作方式:
 1. 推导任务列表:每个 OpenAPI 端点 + 每个事件 = 一个任务
-2. 推导依赖:从 schema 引用、路径前缀、事件订阅推导
+2. 推导依赖:从 schema 引用、路径前缀、事件订阅推导;再做**共享依赖面分析**——Produces 被 ≥2 个后续任务 Consumes 的共享接口,定稿前移到 Wave 1 显式产出(见协调器定义步骤 3)
 3. **产出覆盖矩阵**:契约声明的端点/事件零任务覆盖 = CRITICAL,补齐任务后才可派发
 4. 划分波次:Kahn 拓扑排序
 5. 对每个波次:
@@ -129,8 +138,8 @@ THRESHOLD=$(grep -o '"inline_threshold": *[0-9]*' .planning/config.json | grep -
 - [ ] 所有 OpenAPI 端点都已实现(返回 mock)?
 - [ ] 所有事件都已连接?
 - [ ] 所有波次验证通过?
-- [ ] 没有写业务逻辑(检查提交 diff)?
-- [ ] 工作目录已清理(worktree 已删除)?
+- [ ] 没有写业务逻辑(检查提交 diff)?(brownfield 基线下改判:存量实现未被 mock 化/重写,diff 只有缺口补齐与偏差修正)
+- [ ] 工作目录已清理?——**以实测为准**:协调器报告须附 `git worktree list` / `ls .git/ql/worktrees/` / `git branch --list "ql/wave-*"` 三查输出;主会话亲自复核任一项非空即未清理,退回协调器
 
 ## 步骤 3: 更新 STATE
 

@@ -36,6 +36,7 @@ color: yellow
 ```yaml
 任务: 实现 [TASK_NAME]
 阶段: [skeleton | fill]
+实现基线: [greenfield(骨架=最小 mock)| brownfield(spec-as-is:以存量实现为基线对齐契约,禁止 mock 化)]
 输入:
   - 工作目录: [worktree_path]
   - 分支: [branch]
@@ -117,7 +118,12 @@ cat .planning/build/skeleton-report.md
 
 ### 骨架阶段
 
-每个端点返回**最小有效 mock**:
+**先看任务卡的"实现基线"字段,它决定骨架的含义:**
+
+- `greenfield`(缺省)—— 按下述"最小有效 mock"标准产出骨架
+- `brownfield / spec-as-is` —— 契约项在存量代码中已有实现:你的工作是**对齐**(补契约缺口、修行为偏差),**绝不把存量实现替换为 mock、不重写既有结构**;验收标准 = 存量测试不回归 + 契约项可观察满足
+
+greenfield 时每个端点返回**最小有效 mock**:
 
 ```typescript
 // ✅ 骨架
@@ -165,8 +171,17 @@ app.get('/api/users/:id', async (req, res) => {
 
 ## 步骤 6: 测试
 
+**标准验证清单(从项目 package.json scripts 自动探测,先于任务卡指定命令):**
+
 ```bash
-# 启动服务(若尚未启动)
+cat package.json   # scripts 里存在哪些就要跑哪些
+```
+
+- scripts 里存在 `test` / `typecheck`(或 `tsc`)/ `lint` / `build` 中的**任何一项,就必须全部跑、全绿才算完成**——**存在而没跑 = 未完成**,哪怕任务卡只写了 curl(lint error 拖到阶段验证才暴露 = 整波回炉)
+- 非 JS 项目或无 package.json → 按任务卡指定的验证命令执行,并把仓库实际可用的等价命令(make / pytest / cargo test 等)跑全
+
+```bash
+# 启动服务(若尚未启动,HTTP 服务型项目)
 npm run dev &
 sleep 3
 

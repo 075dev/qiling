@@ -59,7 +59,7 @@ allowed-tools:
 </objective>
 
 <execution_context>
-@../workflows/doc.md
+@../../workflows/doc.md
 @../templates/chapter.md
 @../templates/chapter-index.md
 </execution_context>

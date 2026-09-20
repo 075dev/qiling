@@ -44,7 +44,9 @@ test -f .planning/build/skeleton-report.md || {
 - .planning/build/skeleton-report.md —— 骨架清单(所有端点已 mock,事件已连接)
 - .planning/config.json
 
-阶段:fill(替换 mock 为真实实现)
+阶段:fill(替换 mock 为真实实现;若骨架阶段为 brownfield/spec-as-is 基线,则填充同样以存量实现为基线增量对齐)
+
+派发通道:你的 Agent 工具应包含 ql-builder-worker 子代理类型;若不可用,立即返回 DISPATCH_CHANNEL_UNAVAILABLE 并停止——禁止降级到外部 CLI/子进程派发,由主会话改内联模式或换宿主
 
 工作方式:
 1. 读 skeleton-report.md,获取所有任务清单
@@ -125,7 +127,7 @@ npm run build   # 或仓库实际的构建命令
 
 ## 步骤 5.5: 独立评审
 
-验证通过后,执行 `@../workflows/review.md`:
+验证通过后,执行 `@review.md`:
 
 - 主会话直接派发 `ql-reviewer`(全新上下文,不经协调器)
 - 三个独立结论:契约合规 / 正确性 / 代码库一致性

@@ -5,6 +5,45 @@
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.16.0] - 2026-09-20
+
+### 修复与增强:真实项目全链路反馈落地(vscode-ue-helper 走通 update → scan → next → design → build)
+
+**背景:** 在 VSCode 插件项目(27 命令 + 9 MCP 工具,非 HTTP 服务型)上完整走通器灵链路:36/36 端点对齐契约、测试 1249→1312 全绿、评审首轮 approved。协作骨架经受住了考验(决策轨迹注入、progress 台账断点续跑、自包含任务卡、双门各抓真问题),但暴露五类问题,本版全部落实。
+
+**P1 派发通道门控(子代理派发断裂时协调器自行降级外部 CLI,浪费约 1 小时):**
+
+- **协调器新增步骤 0「派发通道门控」**:启动先探测 Agent 工具里 `ql-builder-worker` 类型是否真实可用;不可用 → 立即返回 `DISPATCH_CHANNEL_UNAVAILABLE` 并停止。**铁律:禁止自行降级到外部 CLI/子进程派发(`--yolo` 类无人值守通道尤其禁止)、禁止改为亲自实现**——唯一合法动作是停止 + 报告,由主会话决策(改内联/换宿主)
+- **`workflows/build-skeleton.md` runtime_compatibility 重写为「宿主上下文可用性矩阵」**:主会话可派 coordinator/reviewer;协调器可派 worker **当且仅当宿主把该类型暴露给子代理上下文**(部分宿主只在主会话暴露,子代理不继承);worker/reviewer 是叶子角色
+- 主会话派发协调器的任务卡(skeleton 与 fill)新增**派发通道**字段,通道约定显式写进任务;`docs/PARALLELIZATION.md` 新增「宿主上下文可用性(派发前先读)」章节
+
+**P2 迁移引擎对残缺 `.planning/` 静默通过 + ql-next/ql-update 决策循环:**
+
+- **`scripts/migrate.mjs` 新增核心工件完整性检查**:有 `.planning/` 但缺 STATE.md / config.json(常见:只用过 /ql-fix、/ql-add 旁路技能,主线未初始化)→ 显式警示块列出缺失项与补建指引,**不再输出裸"✅ 无需迁移"**;自测新增场景 4(仅旁路工件)与场景 5(仅缺 config),13 → 17 项断言
+- **`workflows/next.md` 决策表 15 → 17 行**:新增「有 .planning/ 但无 STATE.md」(→ /ql-design 或 /ql-scan,**明确不指向 /ql-update**——迁移不代建核心工件,指过去只会空转)与「STATE.md 存在但无 config.json」(→ 从模板复制 + /ql-update 补字段)两个形态;原「无 ql_version 锚点」行限定为 STATE.md 存在的情形,消除循环;磁盘盘点纳入 config.json
+
+**P3 非 HTTP 项目一等公民支持(全流程默认假设 HTTP 服务型):**
+
+- **`workflows/design.md` 勘察新增「项目形态判定」**:HTTP 服务型(缺省,契约直译)| 非 HTTP 型(插件/CLI/MCP 工具/库,按转译表落字段);**步骤 3 新增契约转译表**:servers→宿主与入口(vscode://<id> / bin://<cmd> / mcp://<server>)、paths→能力标识、动词→操作语义、responses→返回值与错误通道、认证→宿主权限模型、分页/速率限制不适用即省略;`info.description` 首行声明"非 HTTP 项目,契约字段按转译表理解"
+- **冻结门新增「棕地检测」**:契约项在存量代码中已有实现 → 必须在 decisions.md 落 spec-as-is 决策;`templates/openapi-spec.yaml` 头部注释补转译说明
+- **构建侧「实现基线」贯通**:greenfield(缺省,骨架=最小 mock)| brownfield(spec-as-is:对齐存量实现,禁止 mock 化/重写)——build-skeleton 步骤 0 判定并写进派发任务卡,协调器逐字透传,worker 按基线分流实现与验收标准(棕地 = 存量不回归 + 契约缺口补齐)
+- **`scripts/docsmap.mjs` 提取器扩展**:事件新增 VSCode `EventEmitter.fire` 惯例(`this._onDidX.fire()` → 事件 `onDidX`);新增**命令/工具注册**提取(`registerCommand` / MCP `server.tool` / CLI `program.command`,章节新增 §一.4);新增 **`--patterns` 自定义提取器**(JSON 配置补项目特有注册风格,§一.5);frontmatter/摘要/断言 2/3 同步覆盖(端到端实测:events=1、commands=2、custom=1,12 断言全绿)
+
+**P4 worker 验证清单缺 lint + 共享接口变更多 worker 各自绕行:**
+
+- **worker 标准验证改为从 package.json scripts 自动探测**:test / typecheck / lint / build 存在即必须跑、全绿才算完成——**存在而没跑 = 未完成**(42 个 lint error 拖到验证阶段才暴露、整波回炉,是这条缺失的学费);协调器任务卡第 9 项同步
+- **协调器新增「共享依赖面分析」**(波次划分后、派发前必做):Produces 被 ≥2 个后续任务 Consumes 的共享接口(dispatch 签名、公共 Envelope 类型等)→ 定稿前移 Wave 1 显式产出并声明 `shared_interface`,或拆独立"接口定稿"任务;分析结果写进阶段报告供评审核对(多 worker 各自 `as unknown as` 绕行的消解不再靠运气)
+
+**P5 三项小修:**
+
+- `/ql-design` 步骤 1 顺手落默认 config.json(缺失时从模板复制)——build 派发决策门从此读到真实配置而非永远走兜底默认
+- **SKILL.md 相对路径修正 11 处**:`@../workflows/` → `@../../workflows/`(skills/ql-x 的上一级是 skills/ 而非插件根,原路径解析落空);顺带修正 `workflows/add.md` 的 `@../review.md` 断链与 `build-fill.md` 的绕行引用为同目录 `@review.md`
+- **协调器清理改为「清理回执」**:`git worktree list` / `ls .git/ql/worktrees/` / `git branch --list "ql/wave-*"` 三查**实测输出全空**才可声明"已清理",输出附进阶段报告;主会话验证清单同步为亲自复核
+
+**配套:** README 关键机制表 12 → 15 行(新增派发通道门控、实现基线、非 HTTP 项目支持;依赖分析/Worktree 隔离/Worker 上下文三行补新语义);版本五处同步 0.16.0。
+
+**验证:** `npm run migrate:test` 17/17;docsmap 扩展提取器端到端 12/12 断言(临时插件项目实测 fire / registerCommand / createTreeView 自定义提取);`npm run validate`、`verify:flow`、`verify:schema`、`chapter:render` 全套通过。
+
 ## [0.15.0] - 2026-09-19
 
 ### 新增:`/ql-update` 升级迁移 + validate 自描述断言——插件升级后的工件一键迁移

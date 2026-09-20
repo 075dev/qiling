@@ -42,7 +42,7 @@ allowed-tools:
 </objective>
 
 <execution_context>
-@../workflows/deliver.md
+@../../workflows/deliver.md
 </execution_context>
 
 <process>

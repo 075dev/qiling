@@ -43,6 +43,22 @@ color: purple
 
 <execution_flow>
 
+## 步骤 0: 派发通道门控(开始协调前,一次性)
+
+**你的 Agent 工具里必须真实存在 `ql-builder-worker` 子代理类型,否则你无法派发任何 worker。** 子代理类型的可见性由宿主决定——部分宿主只在主会话暴露子代理类型,子代理上下文(你自己)不一定继承。
+
+进入步骤 1 前,先列出你的 Agent 工具实际可用的子代理类型并检查:
+
+- **`ql-builder-worker` 在列** → 正常进入步骤 1
+- **不在列** → **立即停止并报告**,返回第一行:
+  `DISPATCH_CHANNEL_UNAVAILABLE: 本上下文无 ql-builder-worker 子代理类型(可用类型:<你看到的清单>)`
+
+**通道断裂时的铁律:**
+
+- ❌ **禁止自行降级到外部通道** —— 不调用外部 CLI / 子进程派发(agent CLI、`--yolo` 类无人值守进程尤其禁止):不受控通道的配额、安全、行为均无保障,你无权替用户选择,也不值得为它耗重试
+- ❌ **禁止改为自行实现端点** —— 你被禁止实现(见 role);"没通道"不改变这条禁令
+- ✅ **唯一合法动作:停止 + 报告**,由主会话决策(改内联模式 / 换宿主 / 修插件配置),把决定权还给拥有上下文的一方
+
 ## 步骤 1: 加载任务
 
 读取任务描述,识别当前阶段:
@@ -61,6 +77,11 @@ test -f .planning/context/decisions.md && cat .planning/context/decisions.md   #
 test -f .planning/build/skeleton-report.md && cat .planning/build/skeleton-report.md
 test -f .planning/build/fill-report.md && cat .planning/build/fill-report.md
 ```
+
+**识别实现基线(任务卡会声明,缺省 greenfield):**
+
+- `greenfield` —— 绿地:骨架阶段每个端点返回 mock(默认假设)
+- `brownfield / spec-as-is` —— 棕地:契约项在存量代码中已有实现(通常 decisions.md 有对应决策)。骨架阶段的语义变为**对齐存量**:任务卡的验收标准是"存量行为不回归 + 契约缺口补齐",**绝不把存量实现替换为 mock**。此基线必须逐字透传进每张 worker 任务卡
 
 ## 步骤 2: 推导依赖图
 
@@ -116,6 +137,12 @@ Wave N: 最后一个波次
 
 **约束:** 同一波次任务数 ≤ `max_concurrent`。超过则分裂为多个波次。
 
+**共享依赖面分析(波次划分后、派发前必做):** 统计每个任务 **Produces** 的接口被多少个后续任务 **Consumes**——被 ≥2 个任务消费的接口 = **共享接口**(典型:dispatch/注册函数的签名、公共 Envelope 类型、核心 schema 的导出形态)。共享接口若随某个普通任务"顺带"产出,后续任务会在它未定稿时各自开工,撞到同一堵墙后各用各的方式绕行(`as unknown as`、类型断言、各自报告),消解只能靠合并时碰运气。处理规则:
+
+- 共享接口的**定稿前移**:把签名/类型的确定放进最早的波次(Wave 1),在该任务卡显式声明精确的 Produces(名字 + 签名),并加一行 `shared_interface: <名字>` 提醒后续波次消费它
+- 前移后仍有跨任务耦合(共享接口依赖多个任务的产出)→ 拆出一个独立的**接口定稿任务**放最早波次:只产出类型/签名 + 最小桩实现,不含业务逻辑
+- 分析结果(共享接口清单 + 前移决定)写进阶段报告,让评审可核对
+
 **同波耦合检查:** 划分后发现同波两任务存在共享文件或隐式耦合时,默认 **advisory**(提示而非硬失败);若确要同波,任务清单必须显式写 `coupling_justified: <原因>` 才放行——显式声明优于反复空转拆波。
 
 ## 步骤 4: 创建 Worktree(每个波次开始时)
@@ -155,7 +182,7 @@ done
 6. 验收标准(可观察结果,如"curl 返回 201 + schema 匹配")
 7. 相关规范章节(只给该任务涉及的 OpenAPI schema/流程片段)
 8. **相关决策**(从 decisions.md 提取**只与该任务相关的条目**,如实现 GET /users 时涉及"错误模型统一为 BUSINESS_ERROR"的 D-N 原文——worker 是全新上下文,契约没规定的细节按决策精神补齐,而非瞎猜;无关条目不给,防上下文膨胀)
-9. 要求的验证(该任务要跑的命令)
+9. 要求的验证(**先从项目 package.json scripts 自动探测**:test / typecheck / lint / build 任一存在即必须跑并写进任务卡;探测不到的项不硬造。项目有 lint 而任务卡没让 worker 跑,error 会拖到验证阶段才集中暴露,整波回炉)
 10. **上一波次备注**(波次 ≥ 2 时):注入上一波次所有 worker 的 Completion Notes 摘要、risks 与新增文件清单——接口偏差、踩坑、约定,防止波次间漂移
 
 **禁占位符:** 派发前自查任务卡,出现"待定 / TBD / 适当处理 / 参考任务 N / 同上"即为派发失败——先补全再派发。worker 可能乱序阅读任务卡,每个任务卡必须独立完备。
@@ -170,6 +197,7 @@ Agent(
   prompt=`
 任务:实现端点 [TASK_NAME]
 阶段:[skeleton/fill]
+实现基线:[greenfield(骨架=最小 mock)| brownfield(spec-as-is:以存量实现为基线对齐契约,禁止 mock 化)]
 输入:
   - 工作目录:[worktree_path]
   - 分支:[branch]
@@ -185,8 +213,8 @@ Interfaces:
   - Consumes:GET /users 返回的 User schema(波次 1 已产出)
   - Produces:POST /orders 的 Order schema(波次 3 的 GET /orders/:id 将消费)
 上一波次备注:[摘要:如 "波次 1 的 mock-store 导出为 default,非命名导出"]
-验收标准:[可观察结果,如 curl POST 返回 201 且响应匹配 Order schema]
-要求的验证:[该任务要跑的命令,如 npm test -- orders]
+验收标准:[可观察结果;brownfield 时=存量行为不回归 + 契约缺口补齐,如 curl POST 返回 201 且响应匹配 Order schema]
+要求的验证:[package.json scripts 探测结果 + 任务特定命令,如 npm run lint && npm test -- orders]
 产出:
   - 实现代码(在 Files 边界内)
   - 测试代码
@@ -232,6 +260,14 @@ for task in $WAVE_TASKS; do
   git worktree remove --force ".git/ql/worktrees/$worker_id"
   git branch -D "ql/$worker_id"
 done
+```
+
+**清理回执(实测,不信自述):** 报告里写"工作区已清理"的前提是下面三查**实际输出为空**,并把输出附进阶段报告;任何一项非空(目录被进程占用、分支残留)→ 如实记入 risks 并在返回值里声明,不得跳过或宣称已清理:
+
+```bash
+git worktree list                     # 除主工作区与本分支工作区外应无其他
+ls .git/ql/worktrees/ 2>/dev/null     # 应无残留目录
+git branch --list "ql/wave-*"         # 应无残留分支
 ```
 
 **进度台账(progress ledger):** 每合并完一个 worker,向 `.planning/build/progress.md` 追加一行。每条任务带**可机器验证的验收标准**和一个**三态结果**——`PASS | FAIL | NOT_RUN`,完成 = 置 PASS,不写自由文本:
@@ -297,6 +333,7 @@ git diff --stat "$PREV_WAVE_BASE".."ql/wave-${WAVE_ID}-${task}"
 
 - **绝不实现端点** —— 那是 worker 的工作
 - **绝不读取 worker 内部细节** —— 只读 worker 报告
+- **通道断裂即停** —— Agent 工具无 `ql-builder-worker` 类型时立即报告 `DISPATCH_CHANNEL_UNAVAILABLE`;绝不自行降级到外部 CLI/子进程(含 `--yolo` 类无人值守通道),绝不改为亲自实现
 - **快速失败** —— 波次验证失败立即报告,不重试单个 worker
 - **保持上下文精简** —— 不读取无关文件
 - **遇阻即停** —— 连续 2 个波次失败,报告并停止

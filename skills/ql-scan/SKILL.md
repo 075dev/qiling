@@ -76,7 +76,7 @@ allowed-tools:
 </objective>
 
 <execution_context>
-@../workflows/scan.md
+@../../workflows/scan.md
 @../templates/chapter.md
 @../templates/chapter-index.md
 @../scripts/docsmap.mjs

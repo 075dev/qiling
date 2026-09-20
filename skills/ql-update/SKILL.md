@@ -50,7 +50,7 @@ allowed-tools:
 </objective>
 
 <execution_context>
-@../workflows/update.md
+@../../workflows/update.md
 </execution_context>
 
 <process>

@@ -60,7 +60,7 @@ allowed-tools:
 </objective>
 
 <execution_context>
-@../workflows/design.md
+@../../workflows/design.md
 @../templates/openapi-spec.yaml
 @../templates/event-flow.md
 @../templates/decisions.md

@@ -98,14 +98,17 @@ Wave 2:依赖 Wave 1 的端点(并行)
 
 | 机制 | 作用 |
 |------|------|
-| **依赖分析** | 从 OpenAPI schema `$ref` + 路径前缀自动推导依赖 |
+| **依赖分析** | 从 OpenAPI schema `$ref` + 路径前缀自动推导依赖;**共享依赖面分析**:Produces 被 ≥2 个后续任务消费的共享接口(dispatch 签名/公共类型),定稿前移 Wave 1 显式产出,防多 worker 撞同一堵墙各自绕行 |
 | **波次划分** | Kahn 拓扑排序,同一波次内并行无冲突 |
-| **Git Worktree 隔离** | 每个 worker 独立 worktree,完成后 merge;基于特性分支,绝不基于 main,禁止嵌套 |
+| **Git Worktree 隔离** | 每个 worker 独立 worktree,完成后 merge;基于特性分支,绝不基于 main,禁止嵌套;**清理回执**:三查实测(worktree list / 目录 / 分支)全空才可声明已清理 |
 | **原子提交** | 每个端点一个 commit,合并时按拓扑顺序 |
 | **协调器精简** | 协调器只负责派发、合并、验证,~15% 上下文 |
-| **Worker 全新上下文** | 每个 worker 200k token 上下文,只读必要输入 |
+| **派发通道门控** | 协调器启动先探测 worker 子代理类型是否真实可用;不可用立即报 `DISPATCH_CHANNEL_UNAVAILABLE` 停止——绝不自行降级外部 CLI/子进程(`--yolo` 类尤禁),由主会话改内联模式或换宿主 |
+| **Worker 全新上下文** | 每个 worker 200k token 上下文,只读必要输入;标准验证从 package.json scripts 自动探测(test/typecheck/lint 存在即必须跑) |
 | **独立评审** | 验证通过后,全新上下文的 reviewer 对照规范 + diff + 验证摘要给三结论(契约合规/正确性/一致性),critical 阻断交付 |
 | **派发决策门** | 构建前三问(产物体积/独立性/交互性)+ 内联阈值(默认 2):小项目主会话内联构建,不付子代理冷启动开销;修复优先续接原 worker;任务卡共享前缀提升缓存命中 |
+| **实现基线** | 绿地(骨架=最小 mock,缺省)/ 棕地(spec-as-is:契约对齐存量实现,禁止 mock 化)双基线;design 冻结门做棕地检测并落决策,build 据此生成 worker 任务卡 |
+| **非 HTTP 项目支持** | design 勘察即判项目形态(HTTP 服务型 / 插件·CLI·MCP 型),后者按契约转译表落字段(servers→宿主入口、paths→命令/工具标识),不硬造 HTTP 假设;scan 提取器覆盖命令/工具注册与 `EventEmitter.fire`,`--patterns` 支持自定义提取器 |
 | **决策轨迹** | 讨论中每个非显然设计选择落痕(决策/理由/否掉的备选/代价)到 decisions.md,append-only——worker 按设计意图填充,评审区分"实现错"与"契约滞后",加功能不静默推翻既有决策 |
 | **反套路评审** | reviewer 对照 8 条 AI 代码套路清单(mock 冒充实现、吞错误、契约字段未消费等)显式扫描,扫描结果可核 |
 | **Fresh evidence** | 每条验证命令记一行 PASS/FAIL/PRE-EXISTING;子代理报告只算声明,主会话亲自复核后才算通过 |

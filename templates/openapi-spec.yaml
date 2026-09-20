@@ -4,6 +4,15 @@
 #
 # 这是讨论阶段的产出,作为 AI 自动构建的输入。
 # 模板故意**留空**——所有具体内容由讨论对话填充。
+#
+# 非 HTTP 项目(插件 / CLI / MCP 工具 / 库):OpenAPI 仍是规范语言,但字段按
+# "转译表"理解,不硬套 HTTP 假设——完整转译表见 workflows/design.md 步骤 3:
+#   servers → 宿主与入口(vscode://<id> / bin://<cmd> / mcp://<server>)
+#   paths   → 能力标识(命令 / 工具 / 公开函数)
+#   动词     → 操作语义(查询/执行/删除),不字面实现 HTTP
+#   responses → 返回值与错误通道(错误码 / 异常 / Envelope)
+#   认证/分页/速率限制 → 宿主权限模型;不适用的省略,不发明
+# 且 info.description 首行写明"非 HTTP 项目,契约字段按转译表理解"。
 
 openapi: 3.1.0
 info:

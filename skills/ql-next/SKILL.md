@@ -40,7 +40,7 @@ allowed-tools:
 </objective>
 
 <execution_context>
-@../workflows/next.md
+@../../workflows/next.md
 </execution_context>
 
 <process>

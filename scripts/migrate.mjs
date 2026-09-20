@@ -219,12 +219,37 @@ function runMigration(projectDir, { dryRun = false, checkOnly = false } = {}) {
   lines.push(`项目版本:${detected.source}${detected.version ? `(${detected.version})` : ''}`);
   lines.push('');
 
+  // 核心工件完整性:有 .planning/ 但缺 STATE.md / config.json = 残缺状态(常见:只用过
+  // /ql-fix、/ql-add 等旁路技能,主线从未初始化)。迁移规则对这种形态全部不适用,
+  // 若无此检查会静默报"✅ 无需迁移",把真问题盖在成功话术下面
+  const missingCore = [];
+  if (!existsSync(ctx.paths.state)) {
+    missingCore.push('STATE.md(状态锚点)—— 要开始主线开发 → /ql-design(新设计)或 /ql-scan(接手存量代码),初始化时生成');
+  }
+  if (!existsSync(ctx.paths.config)) {
+    missingCore.push('config.json(工作流配置)—— 从插件 templates/config.json 复制默认值,或跑 /ql-design 初始化时生成');
+  }
+  if (missingCore.length > 0) {
+    lines.push('⚠️ .planning/ 存在但核心工件缺失(残缺状态,常见原因:只使用过 /ql-fix、/ql-add 等旁路技能,主线未初始化):');
+    for (const item of missingCore) lines.push(`  - ${item}`);
+    lines.push('  版本迁移不代建核心工件,先补齐再谈迁移(/ql-next 会给出同样指引)。');
+    lines.push('');
+  }
+
   if (detected.version === targetVersion && migrations.length === 0) {
-    lines.push(`✅ 项目已是最新(${targetVersion}),无需迁移。`);
+    if (missingCore.length > 0) {
+      lines.push('ℹ️ 版本已是最新,但上述核心工件缺失——迁移不代建,先补齐再 /ql-next 重新推导位置。');
+    } else {
+      lines.push(`✅ 项目已是最新(${targetVersion}),无需迁移。`);
+    }
     return { exitCode: 0, output: lines.join('\n') };
   }
 
   if (migrations.length === 0) {
+    if (missingCore.length > 0) {
+      lines.push('ℹ️ 版本规则层面无需迁移,但上述核心工件缺失——先补齐(见指引),再 /ql-next 重新推导位置。');
+      return { exitCode: 0, output: lines.join('\n') };
+    }
     lines.push(`✅ 无需迁移(项目 ${detected.version || '(无锚点)'} → ${targetVersion},全部规则已满足)。`);
     // 顺手把缺失的锚点补上,下次精确判断
     if (detected.version === null && ctx.state !== null && !dryRun) {
@@ -371,6 +396,28 @@ function selfTest() {
   const cfgUntouched = readJsonSafe(join(proj2, '.planning', 'config.json'));
   assert('8 --check 报告待迁移且不落盘', chk.exitCode === 0 && chk.output.includes('待迁移')
     && cfgUntouched && cfgUntouched.parallelization === undefined);
+
+  // ── 场景 4:残缺 .planning/(只有旁路工件)→ 显式警示,不静默"无需迁移" ──
+  const partial = join(base, 'partial-project');
+  mkdirSync(join(partial, '.planning', 'bugfix'), { recursive: true });
+  writeFileSync(join(partial, '.planning', 'bugfix', 'b1.md'), '---\nstatus: blocked\n---\n', 'utf8');
+  const r4 = runMigration(partial, {});
+  assert('9 残缺 .planning/ 输出核心工件缺失警示(非静默通过)',
+    r4.exitCode === 0 && r4.output.includes('核心工件缺失'));
+  assert('9a 警示列出两项缺失工件与补建指引',
+    r4.output.includes('STATE.md') && r4.output.includes('config.json')
+    && r4.output.includes('/ql-design') && r4.output.includes('/ql-scan'));
+  assert('9b 缺核心工件时不再输出裸"✅ 无需迁移"结论',
+    !r4.output.includes('✅ 无需迁移') && !r4.output.includes('✅ 项目已是最新'));
+
+  // ── 场景 5:STATE.md 存在但 config.json 缺失 → 只警示 config 一项,不误报 STATE ──
+  const half = join(base, 'half-project');
+  mkdirSync(join(half, '.planning'), { recursive: true });
+  writeFileSync(join(half, '.planning', 'STATE.md'),
+    `---\nstatus: discussed\nql_version: '${targetVersion}'\n---\n\n# s\n`, 'utf8');
+  const r5 = runMigration(half, {});
+  assert('10 半残项目(缺 config.json)警示只含 config 一项',
+    r5.exitCode === 0 && r5.output.includes('config.json') && !r5.output.includes('STATE.md(状态锚点)'));
 
   // ── 清理 ──
   rmSync(base, { recursive: true, force: true });

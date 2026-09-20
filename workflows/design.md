@@ -35,6 +35,15 @@ git log --oneline -10     # 近期在做什么
 - 已有的数据模型/领域名词 → 直接复用其命名
 - 近期提交方向 → 推断本阶段聚焦点
 
+**项目形态判定(勘察必出,写进 STATE 备注,作为后续契约生成的模式开关):**
+
+| 形态 | 判定线索 | 对契约的影响 |
+|------|----------|--------------|
+| **HTTP 服务型**(缺省假设) | 依赖里有 express/fastify/koa/nest 等;入口监听端口 | 契约直译:servers / paths / responses 原样使用 |
+| **非 HTTP 型**(插件 / CLI / MCP 工具 / 库) | VSCode 插件依赖(`vscode` + `engines.vscode`)、`bin` 入口、MCP server 注册、纯库导出、无端口监听 | 契约**语义转译**(见步骤 3 转译表)——不硬造 servers/分页/速率限制这些 HTTP 假设 |
+
+非 HTTP 型不是二等公民:转译后契约仍是构建的单一事实源,只是字段语义按转译表理解。
+
 勘察后只问**真正的产品决策**:端点取舍、错误语义、事件边界、状态转换。
 
 **契约已存在(再次进入讨论):** 就地编辑 `.planning/context/openapi.yaml` 与 `event-flow.md`——只改受本次讨论影响的部分,**绝不另建第二份规范文档**,不重新生成未受影响的章节。决策轨迹同理**就地追加**:本轮新产生的权衡写新行(编号延续);若与既有 D-N 冲突,走"取代 D-N"流程并同步修订契约,**不允许静默推翻**。
@@ -64,6 +73,10 @@ status: discussing
 ## 当前位置
 阶段: 1 (讨论中)
 EOF
+
+# config.json 一步到位:缺失则从插件模板复制默认值——/ql-build 的派发决策门要读它,
+# 缺失时 inline_threshold 永远走兜底默认,用户改了配置也不生效
+test -f .planning/config.json || cp <插件目录>/templates/config.json .planning/config.json
 ```
 
 读取 STATE,获取 `current_phase`(讨论阶段编号)。
@@ -162,6 +175,20 @@ components:
 
 **校验:** 至少 1 个端点,所有 schema 自洽。
 
+**非 HTTP 项目的契约转译表**(项目形态判定为非 HTTP 型时,步骤 3 按此落字段,不硬套 HTTP 模板):
+
+| OpenAPI 字段 | HTTP 语义 | 非 HTTP 转译 |
+|--------------|-----------|--------------|
+| `servers` | 服务地址 | 宿主与入口:VSCode 插件写 `vscode://<extension-id>`;CLI 写 `bin://<命令名>`;MCP 写 `mcp://<server>` |
+| `paths` | HTTP 路径 | 能力标识:命令 `/commands/qlAddFeature`、MCP 工具 `/tools/search_docs`、公开函数 `/api/parseFile` |
+| 动词 get/post/put/delete | HTTP 方法 | 操作语义:查询=GET、执行/变更=POST、删除=DELETE(只做语义标注,不字面实现 HTTP) |
+| `responses` | HTTP 状态码 | 返回值与错误通道:`200`→正常 payload;`4xx/5xx`→错误码/异常/Envelope 错误分支 |
+| `parameters` | 请求参数 | 函数参数 / 命令行 options |
+| 认证 `securitySchemes` | API 认证 | 宿主权限模型(插件权限声明、CLI 鉴权参数、MCP 能力声明);没有就省略,不发明 |
+| 分页 / 速率限制 | 常见全局约束 | 通常不适用——省略,不为凑模板而造 |
+
+**转译纪律:** 讨论主题 1~5 照常进行(能力清单、数据模型、事件流、状态机);`info.description` 首行写明"非 HTTP 项目,契约字段按转译表理解",让 worker 与评审零歧义;错误语义(主题 2)在非 HTTP 项目对应"错误码 + 展示通道"的约定,照常落 decisions.md。
+
 ## 步骤 4: 生成 Mermaid 流程图
 
 用 `@../templates/event-flow.md` 创建 `.planning/context/event-flow.md`,包含:
@@ -219,6 +246,7 @@ ambiguity = 1 − (目标×0.4 + 约束×0.3 + 验收×0.3) / 10
 - **ambiguity > 0.2 → 不冻结**,回到步骤 2 继续澄清(只问拉低评分的维度)
 - **实体收敛检查** —— 核心 schema/资源名与上一轮讨论相比是否稳定(改名算收敛,新增算抖动)?连续两轮无新增实体才允许冻结
 - **决策轨迹检查** —— `.planning/context/decisions.md` 存在且有条目。**0 条 = 可疑信号**:大概率全是默认假设在推进、没做真实权衡——回步骤 2 抽查 2~3 个"看似显然"的选择(错误模型、分页约定、幂等语义),确认它们真的是显然的而非被跳过的
+- **棕地检测(spec-as-is 决策)** —— 勘察或讨论中发现契约项在存量代码中已有实现(项目非从零开始)→ **必须**在 decisions.md 落一条决策:"棕地项目,契约对齐存量实现(spec-as-is),构建阶段禁止将存量实现 mock 化/重写"。没有这条决策,/ql-build 缺省按绿地"骨架=mock"推进,worker 会把存量实现当障碍物清掉
 - 冻结时在 STATE 记录评分表(Clarity Breakdown)与默认假设清单(Assumptions Exposed),供后续阶段否决
 
 **讨论结束从主观判断变成可展示的数值。**

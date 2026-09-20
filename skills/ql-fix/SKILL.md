@@ -47,7 +47,7 @@ allowed-tools:
 </objective>
 
 <execution_context>
-@../workflows/fix.md
+@../../workflows/fix.md
 @../templates/bugfix-report.md
 </execution_context>
 

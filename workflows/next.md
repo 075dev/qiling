@@ -21,6 +21,7 @@ consumes: STATE.md, 磁盘产物(openapi.yaml / verification.md / review.md / pr
 ```bash
 # A. 工作流产物
 S_STATE=.planning/STATE.md
+S_CONFIG=.planning/config.json
 S_CONTRACT=.planning/context/openapi.yaml
 S_FLOW=.planning/context/event-flow.md
 S_DECISIONS=.planning/context/decisions.md
@@ -31,7 +32,7 @@ S_VERIF=.planning/build/verification.md
 S_REVIEW=.planning/build/review.md
 S_LEDGER=.planning/build/progress.md
 
-for f in $S_STATE $S_CONTRACT $S_FLOW $S_DECISIONS $S_CONST $S_SKEL $S_FILL $S_VERIF $S_REVIEW $S_LEDGER; do
+for f in $S_STATE $S_CONFIG $S_CONTRACT $S_FLOW $S_DECISIONS $S_CONST $S_SKEL $S_FILL $S_VERIF $S_REVIEW $S_LEDGER; do
   test -f "$f" && echo "有 $f" || echo "无 $f"
 done
 
@@ -65,16 +66,18 @@ grep -l "status: blocked" .planning/bugfix/*.md 2>/dev/null
 | 3 | ledger 存在且有 `status:FAIL` / `status:NOT_RUN` | 构建中断,有未完成任务 | **断点续跑** → `/ql-build`(从第一个非 PASS 继续) |
 | 4 | bugfix 报告有 `status: blocked` | 有未解决的缺陷 | 处理 blocked bug:`/ql-fix <同一 bug>`(读原报告的已排除假设) |
 | 5 | `.git/ql/worktrees/` 非空 | worker worktree 遗留 | 先清理 `git worktree remove`,再进下一步 |
-| 6 | 有 `.planning/` 且 STATE.md 无 `ql_version` 锚点 | 项目建于旧版器灵,工件格式未随插件升级 | `/ql-update`(幂等:dry-run 预览 → 自动备份 → 迁移;已是最新时零改动) |
-| 7 | verification.md 存在且 `verified_at_commit` 落后 HEAD | 验证已 STALE | 重跑验证 → `/ql-build`(验证阶段) |
-| 8 | verification `status: gaps_found` | 验证未通过 | 修复差距 → `/ql-build` 或按报告修复建议 |
-| 9 | review.md `verdict: criticals_found` | 评审有未闭环 critical | 按处置账本修复 → 复审(`/ql-build` 阶段 4) |
-| 10 | verification `passed` + review `approved`/`waived` + 有未提交变更 | 验证评审已过,工作未提交 | 提交变更 → `/ql-deliver` |
-| 11 | verification `passed` + review `approved`/`waived` + 工作区干净 | 本阶段完成 | `/ql-deliver` |
-| 12 | STATE `status: skeleton_complete` | 骨架已通,待填充 | `/ql-build`(自动进入填充) |
-| 13 | STATE `status: discussed` 或 契约存在且冻结门已过 | 方案就绪 | `/ql-build` |
-| 14 | STATE `status: discussing` 或 契约缺失/未冻结 | 讨论未完成 | `/ql-design`(继续澄清,读 STATE 的歧义评分) |
-| 15 | STATE `status: shipped` 且无更多阶段 | 里程碑完成 | 归档或新里程碑 → `/ql-design` 开新阶段 |
+| 6 | 有 `.planning/` 但**无 STATE.md**(常见:目录里只有 bugfix/、add/ 等旁路工件,主线从未初始化) | 残缺的 `.planning/`,主线未初始化 | 新设计 → `/ql-design`;接手存量代码 → `/ql-scan`。**不是** `/ql-update`——迁移不代建核心工件,指过去只会空转 |
+| 7 | STATE.md 存在但**无 config.json** | 工作流配置缺失(派发阈值等一直在走默认值) | 从插件 `templates/config.json` 复制默认值到 `.planning/config.json`,再跑 `/ql-update` 补齐格式字段 |
+| 8 | STATE.md 存在且无 `ql_version` 锚点 | 项目建于旧版器灵,工件格式未随插件升级 | `/ql-update`(幂等:dry-run 预览 → 自动备份 → 迁移;已是最新时零改动) |
+| 9 | verification.md 存在且 `verified_at_commit` 落后 HEAD | 验证已 STALE | 重跑验证 → `/ql-build`(验证阶段) |
+| 10 | verification `status: gaps_found` | 验证未通过 | 修复差距 → `/ql-build` 或按报告修复建议 |
+| 11 | review.md `verdict: criticals_found` | 评审有未闭环 critical | 按处置账本修复 → 复审(`/ql-build` 阶段 4) |
+| 12 | verification `passed` + review `approved`/`waived` + 有未提交变更 | 验证评审已过,工作未提交 | 提交变更 → `/ql-deliver` |
+| 13 | verification `passed` + review `approved`/`waived` + 工作区干净 | 本阶段完成 | `/ql-deliver` |
+| 14 | STATE `status: skeleton_complete` | 骨架已通,待填充 | `/ql-build`(自动进入填充) |
+| 15 | STATE `status: discussed` 或 契约存在且冻结门已过 | 方案就绪 | `/ql-build` |
+| 16 | STATE `status: discussing` 或 契约缺失/未冻结 | 讨论未完成 | `/ql-design`(继续澄清,读 STATE 的歧义评分) |
+| 17 | STATE `status: shipped` 且无更多阶段 | 里程碑完成 | 归档或新里程碑 → `/ql-design` 开新阶段 |
 
 **判定纪律:**
 

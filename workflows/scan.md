@@ -43,11 +43,15 @@ echo "扫描目录:$SCAN_PATH"
 ```bash
 # 在目标项目根执行(脚本可通过插件缓存路径调用;--root 指向目标项目)
 node <插件路径>/scripts/docsmap.mjs --root .
+
+# 非 HTTP 项目(插件/CLI/MCP)内置提取器测不到的注册风格,用自定义提取器补充:
+node <插件路径>/scripts/docsmap.mjs --root . --patterns patterns.json
+# patterns.json = [{"name": "表标题", "regex": "第1捕获组=条目标识", "glob": "*.ts"}]
 ```
 
 脚本内部完成:
 - **技术栈**:语言分布统计、框架/关键依赖推断(标注"推断")、包管理器
-- **能力清单**:npm scripts 原样列出;HTTP 路由与事件发布按**接收者白名单**上下文提取(防 `cache.get()` 误报),每条带 `文件:行号` 证据
+- **能力清单**:npm scripts 原样列出;HTTP 路由、事件发布(`emit`/`publish` 与 VSCode `EventEmitter.fire` 惯例)、**命令/工具注册**(`registerCommand` / MCP `server.tool` / CLI `program.command`)按**接收者白名单**上下文提取(防 `cache.get()` 误报),每条带 `文件:行号` 证据;`--patterns` 自定义提取器补充项目特有的注册风格(非 HTTP 项目的一等公民入口)
 - **目录树**:树形渲染 + 顶层目录职责(标注"推断")+ 截断时显式提示(绝不静默截断)
 - **启动流程**:检出 package.json 入口 + start/dev 脚本才画 mermaid(文件存在性已校验);检不出则诚实声明"未检出",**不画臆测图**
 - **新代码放哪**:基于目录结构的推断指引(回答"加功能放哪")
@@ -100,6 +104,8 @@ node <插件路径>/scripts/docsmap.mjs --root . --update-index  # 只重建索�
 命令(npm scripts):$SCRIPTS 条
 路由(带证据):$ROUTES 条
 事件(带证据):$EVENTS 条
+命令/工具注册(带证据):$COMMANDS 条
+自定义提取(--patterns):$CUSTOM 条(未用则省略)
 密钥扫描:通过
 
 下一步:审阅 .qiling/docs/ 索引(10 条断言已全绿);之后 /ql-design 进入 API 契约生成。

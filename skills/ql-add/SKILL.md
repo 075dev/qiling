@@ -48,7 +48,7 @@ allowed-tools:
 </objective>
 
 <execution_context>
-@../workflows/add.md
+@../../workflows/add.md
 @../templates/openapi-spec.yaml
 @../templates/event-flow.md
 @../templates/decisions.md
