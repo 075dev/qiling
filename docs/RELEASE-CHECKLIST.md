@@ -39,7 +39,7 @@ npm run validate          # 0 错误(警告需逐条确认是预期内)
 npm run verify:flow       # 20/20
 npm run verify:schema     # 通过
 npm run chapter:render    # 9/9
-npm run migrate:test      # 13/13(迁移引擎自测)
+npm run migrate:test      # 17/17(迁移引擎自测)
 ```
 
 全部通过后:按仓库惯例提交(`feat(版本区间): 主题`),推送 GitHub。
