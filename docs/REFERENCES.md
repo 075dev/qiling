@@ -18,3 +18,19 @@
 3. **状态传递靠磁盘工件,不靠对话记忆。** 回流只带路径/结构化结论,细节按需直读文件。
 4. **评审的独立上下文是功能不是成本。** 缓存"不命中"恰恰是评审公正性的来源。
 5. **对冲冷启动靠续接与文件,不靠放弃派发。** resume 原 worker / task_id 续接 / 报告文件兜底。
+
+---
+
+## 文档写法调研(0.17.0 文档树说明书化的依据)
+
+调研时间:2026-09-27。网络来源(非本地克隆),针对"生成的文档不像说明书"的用户反馈。
+
+| 来源 | 定位 | 器灵借鉴了什么 |
+|------|------|----------------|
+| [Diátaxis](https://diataxis.fr) | 文档领域事实标准框架 | 按读者需求分四类(教程/操作指南/参考/解释)且**不混排**——旧章节把参考(端点表)、解释(流程留档)、审计日志混在一章是反例;新结构正文五章 ≈ 指南+参考,附录 ≈ 解释与审计 |
+| [Make a README](https://gist.github.com) | README 共识模板 | 首页三问(这是什么/怎么跑/怎么参与)→ 说明书首页的"定位 → 快速上手 → 功能地图" |
+| GB/T 8567-2006 | 计算机软件文档编制规范(用户手册) | "使用过程(安装初始化、操作步骤、输入输出、**出错处理**)"+ "非常规过程(故障恢复)"——§五 故障排查的错误码→怎么处理列直接对标 |
+| [ReadMe:最佳 API Quickstart 范例](https://readme.com/resources/the-most-effective-api-quickstarts-in-8-examples) / [quickstart 写法](https://developerrelations.com/talks/how-to-write-great-quick-start-guides) / [The Good Docs Project](https://www.thegooddocsproject.dev/template/quickstart) | 快速上手最佳实践 | 目标明确、给全所需、可复制粘贴、结尾给 next steps——§二 快速上手的"第一个调用 + 预期结果 + 下一步"结构 |
+| [Treblle:API 文档 11 条最佳实践](https://treblle.com/blog/11-best-practices-for-writing-api-documentation) | API 参考写作 | 短句主动语态、每个端点必带请求/响应示例(旧模板已达标,保留) |
+
+**核心结论:** 文档质量问题的根源是**视角错位**(写给流程/审计者 vs 写给使用者),不是内容缺失。修复 = 重排结构(说明书正文 + 留档附录)+ 收拢验证噪音(附录 C 折叠区)+ 打破只读快照(manual 人工保护区)。

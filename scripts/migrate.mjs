@@ -134,6 +134,16 @@ const MIGRATIONS = [
     detect: (ctx) => ctx.docsIndex !== null && /器灵版本/.test(ctx.docsIndex),
     plan: (ctx) => `章节索引 .qiling/docs/README.md 的"器灵版本"字段已滞后:建议跑 /ql-scan --force 重新生成(不手改产物)`,
     apply: () => {} // 只报告,不改
+  },
+  {
+    id: 'M5-docs-manual-restructure-note',
+    since: '0.17.0',
+    // 提示类规则:0.17.0 文档树改为说明书式结构(正文五章 + 附录三章 + manual 人工保护区)
+    reportOnly: true,
+    detect: (ctx) => ctx.docsIndex !== null
+      && (/文档树(产品说明书)/.test(ctx.docsIndex) || /^## 章节列表/m.test(ctx.docsIndex)),
+    plan: (ctx) => '文档树为 0.17.0 前格式(目录树/章节列表):建议跑 /ql-scan --force 重扫为说明书式结构(章节内 manual 人工块会自动保留)',
+    apply: () => {} // 只报告,不改
   }
 ];
 
@@ -339,7 +349,8 @@ function selfTest() {
     "---\nql_state_version: '1.0'\ncurrent_phase: 1\nstatus: discussed\n---\n\n# 项目状态\n", 'utf8');
   writeFileSync(join(proj, '.planning', 'build', 'verification.md'),
     '---\nstatus: passed\n---\n\n# 验证报告\n', 'utf8');
-  writeFileSync(join(proj, '.qiling', 'docs', 'README.md'), '# 索引\n\n| 器灵版本 | 0.11.0 |\n', 'utf8');
+  writeFileSync(join(proj, '.qiling', 'docs', 'README.md'),
+    '# 演示项目 · 文档树(产品说明书)\n\n## 章节列表\n\n| 器灵版本 | 0.11.0 |\n', 'utf8');
 
   // 1a dry-run 不落盘
   const dry = runMigration(proj, { dryRun: true });

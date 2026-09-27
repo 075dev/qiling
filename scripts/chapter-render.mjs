@@ -239,19 +239,21 @@ for (const s of schemas) {
   schemaTable += `| ${s.name} | (待提取) | (待提取) |\n`;
 }
 
-// 错误码
-let errorTable = '| HTTP | code | 含义 |\n|------|------|------|\n';
+// 错误码(含"怎么处理"列——说明书故障排查节要求可操作)
+let errorTable = '| HTTP | code | 含义 | 怎么处理 |\n|------|------|------|----------|\n';
 for (const ref of errorRefs) {
-  errorTable += `| (待映射) | ${ref} | (待描述) |\n`;
+  errorTable += `| (待映射) | ${ref} | (待描述) | 按契约 ${ref} 的说明修正请求后重试 |\n`;
 }
+
+const firstGet = endpoints.find(e => e.method === 'GET') || endpoints[0];
 
 const chapterContent = `---
 chapter_id: "chapter-01"
 title: "演示项目"
 phase: 1
 generated_at: "2026-08-28T15:39:02Z"
-generated_by: "器灵工作流 v0.4.1"
-ql_version: "0.4.1"
+generated_by: "器灵工作流 v0.17.0"
+ql_version: "0.17.0"
 git_commit: "demo0000"
 pr_url: "https://github.com/075dev/qiling/pull/1"
 status: "shipped"
@@ -261,48 +263,74 @@ events: ${eventCount}
 
 # 第 1 章 · 演示项目
 
-> **API 驱动开发留档** —— 本章节由器灵 chapter-render.mjs 端到端渲染产出。
+> 本章节是演示项目的**功能说明书**,由器灵 chapter-render.mjs 端到端渲染产出。
+> §一/§二 中 \`<!-- manual -->\` 块内的内容欢迎人工撰写润色(重新生成自动保留);其余机器节不要手改。
 
----
+**一句话:** 演示项目——resources 资源管理 API(从 OpenAPI info.description 提取)。
 
-## 章节摘要
+## 一、这个功能是什么
 
-| 字段 | 值 |
-|------|---|
-| 章节编号 | chapter-01 |
-| 对应 ql 阶段 | Phase 1 |
-| API 端点数 | ${endpointCount} |
-| 事件消息数 | ${eventCount} |
-| 波次数 | ${waveCount} |
-| 测试覆盖率 | ${testCoverage}% |
-| 测试用例 | ${testCases} |
-| 验证状态 | passed |
+<!-- manual:overview -->
+**覆盖能力:** ${endpointCount} 个端点、${eventCount} 个事件消息,完整清单见 [§三 使用说明](#三使用说明)。
 
----
+**什么时候用:** 需要 resources 资源的增删查改时使用本组 API。
 
-## 一、本章节交付的 API(详细文档)
+(以上为生成器初稿;欢迎人工补充:这个功能解决什么问题、什么时候用、不适用什么场景)
+<!-- /manual:overview -->
 
-### 1.1 端点清单
+## 二、快速上手
+
+<!-- manual:quickstart -->
+**前置:** Bearer Token(Authorization: Bearer <token>)
+
+**第一个调用:**
+
+\`\`\`bash
+${genCurl(firstGet.method, firstGet.path)}
+\`\`\`
+
+**预期结果:** HTTP 200,返回 resources 列表。
+
+**下一步:** 浏览 [§三 使用说明](#三使用说明) 选择需要的端点;报错时查 [§五 故障排查](#五故障排查)。
+
+(以上为生成器初稿;欢迎人工补充第一次跑通调用的完整步骤与易踩的坑)
+<!-- /manual:quickstart -->
+
+## 三、使用说明(API 参考)
+
+### 3.1 端点清单
 
 ${endpointTable}
 
-### 1.2 端点详情
+### 3.2 端点详情
 
 ${endpointDetails}
 
-### 1.3 数据模型(Schemas)
+### 3.3 数据模型(Schemas)
 
 ${schemaTable}
 
-### 1.4 错误码参考
+---
+
+## 四、配置与限制
+
+- **认证方式:** Bearer Token
+- **速率限制:** 契约未声明速率限制
+- **已知限制:** 无(shipped)
+
+## 五、故障排查
+
+按错误码排查(完整错误模型以 \`openapi.yaml\` 为准):
 
 ${errorTable}
 
 ---
 
-## 二、本章节的开发流程留档
+## 附录 A · 交付与开发留档
 
-### 2.1 阶段时序
+(本附录面向维护者与 AI 审计,使用者可跳过)
+
+### A.1 阶段时序
 
 \`\`\`mermaid
 timeline
@@ -317,29 +345,23 @@ timeline
               : 生成章节文档
 \`\`\`
 
-### 2.2 讨论阶段产出
+### A.2 讨论阶段产出
 
 - **OpenAPI 契约:** 真实路径数 ${endpoints.length},Schema 数 ${schemas.length}
 - **事件流程图:** 见 OpenAPI components
 
-### 2.3 构建阶段产出
+### A.3 构建与验证产出
 
 - **骨架报告:** ${endpointCount} 端点 mock,${eventCount} 事件连接,${waveCount} 波次
 - **填充报告:** mock 替换 ${mockReplaceRate}/${endpointCount},${testCases} 测试用例
-- **测试覆盖:** ${testCoverage}%
+- **验证报告:** passed(契约符合度 100%,流程符合度 100%)
 
-### 2.4 验证阶段产出
-
-- **verification.md:** passed
-- **契约符合度:** 100%(${endpointCount}/${endpointCount})
-- **流程符合度:** 100%(${eventCount}/${eventCount})
-
-### 2.5 交付阶段产出
+### A.4 交付产出
 
 - **PR:** https://github.com/075dev/qiling/pull/1
 - **本章节文档:** ./chapter-01-demo.md
 
-### 2.6 Git 历史摘要
+### A.5 Git 历史摘要
 
 \`\`\`
 ${gitLog}
@@ -347,21 +369,24 @@ ${gitLog}
 
 ---
 
-## 三、与上一章节的对比
+## 附录 B · 与上一章节对比
 
-无(首章节)。
-
----
-
-## 四、关联文档
-
-- [项目状态](../STATE.md)
-- [OpenAPI 契约](../context/openapi.yaml)
-- [PR](https://github.com/075dev/qiling/pull/1)
+- **新增 API:** 本章节为首个交付章节,以上全部端点均为新增。
+- **修改 / 删除 / 破坏性变更:** 无。
 
 ---
 
-## 五、变更日志
+## 附录 C · 数据来源与验证
+
+### C.1 关联文档
+
+- [项目状态](../STATE.md) · [OpenAPI 契约](../context/openapi.yaml) · [PR](https://github.com/075dev/qiling/pull/1)
+
+### C.2 数据可信约定
+
+- API 以 \`openapi.yaml\` 为单一可信源;流程数据来自构建/验证报告与 git log,未检出显式声明,不编造。
+
+### C.3 变更日志
 
 | 日期 | 操作 | 说明 |
 |------|------|------|
@@ -374,30 +399,48 @@ ok(`渲染章节文件:${chapterPath}`);
 
 // === 步骤 5:渲染索引 ===
 
-const indexContent = `# 演示项目 · 章节文档
+const indexContent = `# 演示项目 · 项目说明书
 
-> 由器灵 chapter-render.mjs 渲染。
+> **resources 资源管理 API 演示项目。**
+>
+> 本页由器灵 chapter-render.mjs 渲染。章节 = 说明书分册。
 
-## 章节列表
+## 快速上手
 
-| 章节 | 标题 | 阶段 | 状态 | API 数 |
-|------|------|------|------|--------|
-| [chapter-01](./chapter-01-demo.md) | 演示项目 | 1 | shipped | ${endpointCount} |
+1. **认证:** 获取 Bearer Token
+2. **第一个调用:** 见 [chapter-01 · §二 快速上手](./chapter-01-demo.md#二快速上手)
+
+## 功能与章节地图
+
+| 章节 | 覆盖什么 | 状态 | 上手入口 |
+|------|----------|------|----------|
+| [chapter-01](./chapter-01-demo.md) | resources 资源管理 API | shipped | [§二 快速上手](./chapter-01-demo.md#二快速上手) |
 
 ---
 
-## API 总览
+## 参考汇总(全章节累积)
 
-${endpointTable}
+| 维度 | 数量 | 明细位置 |
+|------|------|----------|
+| API 端点(合计) | ${endpointCount} | 各章节 §三 使用说明 |
+| 事件(合计) | ${eventCount} | 同上 |
 
-## 项目元信息
+## 如何阅读(按角色 × 意图)
 
-| 字段 | 值 |
-|------|---|
-| 总 API 端点数 | ${endpointCount} |
-| 总事件消息数 | ${eventCount} |
-| 测试覆盖率 | ${testCoverage}% |
-| 器灵版本 | 0.4.1 |
+| 你想做什么 | 去哪里看 |
+|------------|----------|
+| 查某个 API 怎么用 | 对应章节 §三 使用说明 |
+| 调用报错了 | 对应章节 §五 故障排查 |
+| 知道某次交付改了什么 | 对应章节 附录 B |
+
+## 关于本文档
+
+<details>
+<summary>生成方式、版本与严谨性约定(点开展开)</summary>
+
+- **生成:** 器灵工作流 v0.17.0;正文五章 = 说明书,附录三章 = 留档与审计;测试覆盖率 ${testCoverage}%(${testCases} 用例)。
+
+</details>
 `;
 
 const indexPath = join(OUT, 'README.md');
@@ -459,6 +502,17 @@ if (placeholders.length === 0) {
   ok('断言 7:章节文档无未替换占位符');
 } else {
   err(`断言 7:章节文档含未替换占位符: ${[...new Set(placeholders)].join(', ')}`);
+}
+
+// 断言 8:说明书骨架完整(正文五章 + 附录三章)且 manual 保护块配对
+const manualOpen = (chapter.match(/<!-- manual:[a-zA-Z0-9_-]+ -->/g) || []).length;
+const manualClose = (chapter.match(/<!-- \/manual:[a-zA-Z0-9_-]+ -->/g) || []).length;
+const skeletonSections = ['一、这个功能是什么', '二、快速上手', '三、使用说明', '四、配置与限制', '五、故障排查', '附录 A', '附录 B', '附录 C'];
+const missingSections = skeletonSections.filter(s => !chapter.includes(s));
+if (missingSections.length === 0 && manualOpen === manualClose && manualOpen >= 2) {
+  ok(`断言 8:说明书骨架完整(正文五章 + 附录三章,manual 块 ${manualOpen} 对)`);
+} else {
+  err(`断言 8:说明书骨架不完整或缺 manual 块(缺失节: ${missingSections.join(', ') || '无'};manual 开 ${manualOpen} / 闭 ${manualClose})`);
 }
 
 // === 总结 ===

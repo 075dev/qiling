@@ -27,8 +27,11 @@
  *                          name=表标题;regex 的第 1 个捕获组 = 条目标识;glob 可选(默认全部代码文件)
  *
  * 输出:
- *   - .qiling/docs/chapters/chapter-NN-*.md(与 ql-doc 同 5 节结构)
- *   - .qiling/docs/README.md(索引,与 ql-doc 共享同一格式)
+ *   - .qiling/docs/chapters/chapter-NN-*.md(说明书式章节:正文五章 + 附录三章,与 ql-doc 同骨架)
+ *   - .qiling/docs/README.md(项目说明书首页,与 ql-doc 共享同一格式)
+ *
+ * 人工保护区:章节 §一/§二 的 <!-- manual:ID -->…<!-- /manual:ID --> 块供人工撰写,
+ * --force 重扫时同 ID 块原样保留(参见 preserveManual / 断言 11)。
  *
  * 用法:
  *   node scripts/docsmap.mjs [--root <dir>] [选项]
@@ -184,9 +187,7 @@ for (const it of tree) {
 const langTotal = Object.values(langCount).reduce((a, b) => a + b, 0);
 const langRows = Object.entries(langCount).sort((a, b) => b[1] - a[1]).slice(0, 8)
   .map(([ext, n]) => `| .${ext} | ${n} | ${langTotal ? (n / langTotal * 100).toFixed(1) : 0}% |`);
-const langTable = langRows.length
-  ? `| 扩展名 | 文件数 | 占比 |\n|--------|--------|------|\n${langRows.join('\n')}`
-  : '未检出代码文件(Not detected)——扫描范围内没有源码文件。若代码在其他目录,请用 `--scan-path` 指定。';
+// 语言/框架表格化在"证据表"部件段统一处理(未检出 → null + notDetected 清单)
 
 const deps = { ...(pkg && pkg.dependencies) || {}, ...(pkg && pkg.devDependencies) || {} };
 const stackHits = [];
@@ -196,9 +197,6 @@ for (const [name, [use, runtime]] of Object.entries(FRAMEWORK_DICT)) {
 const PKG_MANAGER = existsSync(join(ROOT, 'pnpm-lock.yaml')) ? 'pnpm'
   : existsSync(join(ROOT, 'yarn.lock')) ? 'yarn'
     : existsSync(join(ROOT, 'package-lock.json')) ? 'npm' : '未检出(无 lockfile)';
-const stackTable = stackHits.length
-  ? `| 依赖 | 用途(推断) | 版本 | 运行时 | 范围 |\n|------|--------------|------|--------|------|\n${stackHits.map(h => `| \`${h.name}\` | ${h.use} | ${h.ver} | ${h.runtime} | ${h.dev ? 'dev' : 'prod'} |`).join('\n')}`
-  : '未检出已知框架(Not detected)——依赖中未匹配常见框架词典。可能是纯库项目/非 Node 项目,请以 `package.json` 为准人工确认。';
 
 // === 步骤 3:提取 HTTP 路由(上下文限定,带行号证据,防误报) ===
 // 只在"路由语境"文件中提取:文件名含 routes/router/controller/api/server/index,
@@ -354,9 +352,13 @@ const startScripts = scripts.filter(([k]) => /^(start|dev|serve)$/.test(k));
 // 启动链路检出的条件:有 start/dev 脚本 且 有存在的入口文件
 const bootDetected = startScripts.length > 0 && entryExists;
 
+// 未检出清单(呈现纪律:正文省略未检出小节,统一落到附录 C"数据来源与验证",不把验证噪音印进说明书正文)
+const notDetected = [];
+function noteNotDetected(item, why, advice) { notDetected.push({ item, why, advice }); }
+
 const scriptsTable = scripts.length
   ? `| 命令 | 实际执行 |\n|------|----------|\n${scripts.map(([k, v]) => `| \`npm run ${k}\` | \`${String(v).replace(/\|/g, '\\|')}\` |`).join('\n')}`
-  : '未检出 npm scripts(Not detected)——package.json 不存在或没有 scripts。启动方式请参考项目 README。';
+  : (noteNotDetected('npm 命令(scripts)', 'package.json 不存在或没有 scripts', '以项目 README / package.json 为准人工确认'), null);
 
 const depEntries = Object.entries((pkg && pkg.dependencies) || {});
 const devDepEntries = Object.entries((pkg && pkg.devDependencies) || {});
@@ -364,7 +366,7 @@ const depTable = (depEntries.length || devDepEntries.length)
   ? `| 依赖 | 版本 | 范围 |\n|------|------|------|\n${
     [...depEntries.map(([n, v]) => `| \`${n}\` | ${v} | prod |`),
     ...devDepEntries.map(([n, v]) => `| \`${n}\` | ${v} | dev |`)].join('\n')}`
-  : '未检出依赖声明(Not detected)——package.json 中没有 dependencies / devDependencies。';
+  : (noteNotDetected('依赖声明', 'package.json 中没有 dependencies / devDependencies', '可能是零依赖项目,以 package.json 为准人工确认'), null);
 
 // === 章节目录与 ID 分配 ===
 const chaptersDir = join(ROOT, '.qiling', 'docs', 'chapters');
@@ -399,35 +401,44 @@ if (!UPDATE_INDEX_ONLY) {
   }
 }
 
-// === 步骤 6:渲染章节文件(与 ql-doc 同 5 节结构) ===
+// === 步骤 6:渲染章节文件(说明书骨架:正文五章 + 附录三章,与 ql-doc 同构) ===
 const NOW = new Date().toISOString();
 
 // 证据表(每行带 file:line——"Every finding needs a file path. No exceptions.")
+// 未检出时正文小节整体省略(null),原因与建议记入 notDetected,统一呈现在附录 C
 const routeTable = routes.length
   ? `| 方法 | 路径 | 证据(文件:行) |\n|------|------|------------------|\n${routes.map(r => `| ${r.method} | \`${r.path}\` | \`${r.file}:${r.line}\` |`).join('\n')}`
-  : '未检出 HTTP 路由(Not detected)——未在路由语境文件(`*routes*`/`*router*`/`*controller*` 或 `app.xxx()` 调用)中发现端点声明。若项目使用其他路由风格(如装饰器/配置式路由),请人工补充或先运行 `/ql-design` 生成 OpenAPI 契约。';
+  : (noteNotDetected('HTTP 路由', '未在路由语境文件(`*routes*`/`*router*`/`*controller*` 或 `app.xxx()` 调用)中发现端点声明', '若使用装饰器/配置式等其他路由风格,用 `--patterns` 自定义提取器补充,或运行 `/ql-design` 生成契约'), null);
 const eventTable = events.length
   ? `| 事件名 | 动作 | 证据(文件:行) |\n|--------|------|------------------|\n${events.map(e => `| \`${e.name}\` | ${e.verb} | \`${e.file}:${e.line}\` |`).join('\n')}`
-  : '未检出事件发布(Not detected)——未在事件语境文件中发现 `emitter.emit()` / `bus.publish()` / `this._onX.fire()` 类调用。';
+  : (noteNotDetected('事件发布', '未发现 `emitter.emit()` / `bus.publish()` / `this._onX.fire()` 类调用', '若使用其他事件惯例,用 `--patterns` 自定义提取器补充'), null);
 const commandTable = commands.length
   ? `| 名称 | 注册方式 | 证据(文件:行) |\n|------|----------|------------------|\n${commands.map(c => `| \`${c.name}\` | ${c.kind} | \`${c.file}:${c.line}\` |`).join('\n')}`
-  : '未检出命令/工具注册(Not detected)——未发现 `registerCommand` / MCP `server.tool` / CLI `program.command` 类调用。若项目有其他注册风格,用 `--patterns` 自定义提取器补充。';
+  : (noteNotDetected('命令/工具注册', '未发现 `registerCommand` / MCP `server.tool` / CLI `program.command` 类调用', '若项目有其他注册风格,用 `--patterns` 自定义提取器补充'), null);
 const customSection = customExtractors.length
   ? customHits.map(h => h.rows.length
     ? `**${h.name}**\n\n| 标识 | 证据(文件:行) |\n|------|------------------|\n${h.rows.map(r => `| \`${r.name}\` | \`${r.file}:${r.line}\` |`).join('\n')}`
     : `**${h.name}**:未检出(Not detected)——自定义正则无命中。`).join('\n\n')
   : '';
 
-// 启动链路:只有真实检出才画 mermaid;否则诚实声明 + 给出建议
-let bootSection;
+// 技术栈部件(§四 配置与限制用;未检出 → null + notDetected)
+const langTable = langRows.length
+  ? `| 扩展名 | 文件数 | 占比 |\n|--------|--------|------|\n${langRows.join('\n')}`
+  : (noteNotDetected('代码文件', '扫描范围内没有源码文件', '若代码在其他目录,用 `--scan-path` 指定'), null);
+const stackTable = stackHits.length
+  ? `| 依赖 | 用途(推断) | 版本 | 运行时 | 范围 |\n|------|--------------|------|--------|------|\n${stackHits.map(h => `| \`${h.name}\` | ${h.use} | ${h.ver} | ${h.runtime} | ${h.dev ? 'dev' : 'prod'} |`).join('\n')}`
+  : (noteNotDetected('已知框架', '依赖中未匹配常见框架词典', '可能是纯库/非框架项目,以 `package.json` 为准人工确认'), null);
+
+// 启动链路:只有真实检出才画 mermaid;未检出记入 notDetected(附录 C),正文不画臆测图
+let bootDiagram = null;
 if (bootDetected) {
   const scriptNames = startScripts.map(([k]) => k).join(' / ');
-  bootSection = [
+  bootDiagram = [
     '```mermaid',
     'flowchart LR',
     `    A["package.json<br/>main: ${entryField}"] --> B["npm run ${startScripts[0][0]}"]`,
     `    B --> C["${entryField}(入口,已确认存在)"]`,
-    '    C --> D["路由 / 服务 / 模块(见 §二 目录树)"]',
+    `    C --> D["路由 / 服务 / 模块(见 §三 目录树)"]`,
     '```',
     '',
     `> 图中每个节点均为真实检测值:入口来自 \`package.json\` 的 \`main\`(文件存在性已校验),启动命令来自 \`scripts\` 中的 \`${scriptNames}\`。`,
@@ -437,11 +448,100 @@ if (bootDetected) {
     : !startScripts.length ? 'package.json 无 start/dev 脚本'
       : !entryField ? 'package.json 无 main/bin 字段'
         : `main/bin 指向的文件不存在(${entryField})`;
-  bootSection = `**未能自动检出启动链路(Not detected)。** 原因:${why}。\n> 本文档不输出臆测的启动图。请以项目 README 或 \`package.json\` 的 scripts 为准人工确认。`;
+  noteNotDetected('启动链路', why, '以项目 README 或 `package.json` 的 scripts 为准人工确认');
+}
+
+// === 人工保护区:manual 块(§一/§二 欢迎人工撰写,重新生成时同 ID 原样保留) ===
+const MANUAL_RE = /<!-- manual:([a-zA-Z0-9_-]+) -->[\s\S]*?<!-- \/manual:\1 -->/g;
+function extractManualBlocks(text) {
+  const blocks = {};
+  let m;
+  const re = new RegExp(MANUAL_RE.source, 'g');
+  while ((m = re.exec(text)) !== null) blocks[m[1]] = m[0];
+  return blocks;
+}
+function preserveManual(newText, oldText) {
+  if (!oldText) return newText;
+  const oldBlocks = extractManualBlocks(oldText);
+  return newText.replace(new RegExp(MANUAL_RE.source, 'g'), (whole, id) => oldBlocks[id] || whole);
 }
 
 let chapterContent = '';
 if (!UPDATE_INDEX_ONLY) {
+
+// §一 能力一览(真实计数;未检出项不进正文表,落附录 C)
+const capRows = [];
+if (scripts.length) capRows.push(`| npm 命令 | ${scripts.length} | [§3.1](#三使用说明) |`);
+if (routes.length) capRows.push(`| HTTP 路由 | ${routes.length} | [§3.2](#三使用说明) |`);
+if (events.length) capRows.push(`| 事件发布 | ${events.length} | [§3.3](#三使用说明) |`);
+if (commands.length) capRows.push(`| 命令/工具注册 | ${commands.length} | [§3.4](#三使用说明) |`);
+if (customExtractors.length) capRows.push(`| 自定义提取(--patterns) | ${customTotal} | [§3.5](#三使用说明) |`);
+const capTable = capRows.length
+  ? `| 能力 | 数量 | 明细位置 |\n|------|------|----------|\n${capRows.join('\n')}`
+  : null;
+
+// 项目形态一句话(只用真实检出值)
+const formLine = pkg
+  ? `Node.js 生态项目(\`package.json\` 检出)${stackHits.length ? `,关键依赖:${stackHits.slice(0, 4).map(h => `\`${h.name}\``).join('、')}(用途为推断)` : ''}`
+  : '未检出 package.json,项目形态见 §四 技术栈';
+
+const overviewBody = capTable
+  ? `**覆盖能力:**\n\n${capTable}\n\n**项目形态:** ${formLine}`
+  : `**覆盖能力:** 本扫描未检出可自动提取的能力,明细见附录 C 未检出清单。\n\n**项目形态:** ${formLine}`;
+
+// §二 快速上手(每步只用真实检出值;检不出指向附录 C,不编造命令)
+const pkgManagerCmd = { npm: 'npm install', pnpm: 'pnpm install', yarn: 'yarn install' }[PKG_MANAGER] || null;
+const qsLines = [
+  `1. **环境:** ${pkg ? 'Node.js 生态项目(\`package.json\` 检出)' : '运行时要求见 §四 技术栈'};包管理器:${PKG_MANAGER}`,
+  `2. **安装:** ${pkgManagerCmd ? `\`${pkgManagerCmd}\`` : '未检出 lockfile,安装方式以项目说明为准(见附录 C)'}`,
+  `3. **运行:** ${bootDetected ? `\`npm run ${startScripts[0][0]}\`(入口 \`${entryField}\` 已确认存在)` : '启动方式未自动检出——先完成安装,再按 \`package.json\` 的 \`scripts\` 人工确认(排查见 §五)'}`,
+  `4. **下一步:** ${scripts.length ? `常用命令清单见 [§3.1](#三使用说明),挑一个命令试跑(如 \`npm run ${scripts[0][0]}\`)` : '能力清单见 [§一](#一这个功能是什么) 与附录 C'}`,
+];
+
+// §三 条件小节(未检出的类型整节省略,记录在附录 C 未检出清单)
+const sec31 = scriptsTable ? `### 3.1 命令清单(package.json scripts,原样列出)\n\n${scriptsTable}\n\n` : '';
+const sec32 = routeTable ? `### 3.2 HTTP 路由\n\n${routeTable}\n\n` : '';
+const sec33 = eventTable ? `### 3.3 事件发布\n\n${eventTable}\n\n` : '';
+const sec34 = commandTable ? `### 3.4 命令 / 工具注册\n\n${commandTable}\n\n` : '';
+const sec35 = customExtractors.length ? `### 3.5 自定义提取(--patterns)\n\n${customSection}\n\n` : '';
+const sec36 = `### 3.6 项目结构(目录树,深度 ≤ ${MAX_DEPTH},忽略 node_modules/dist/build/.git 等)\n\n\`\`\`\n${treeView.text}\n\`\`\`\n\n`;
+
+// §四 技术栈部件
+const stackBlocks = [
+  langTable ? `**语言分布(按文件扩展名统计):**\n\n${langTable}` : null,
+  stackTable ? `**框架/关键依赖(推断自 package.json):**\n\n${stackTable}` : null,
+].filter(Boolean);
+const sec42 = depTable ? `\n\n### 4.2 依赖清单\n\n${depTable}\n` : '';
+
+// §五 故障排查(真实可操作的排查指引)
+const troubleShooting = [
+  '**把项目跑起来**',
+  '',
+  bootDetected
+    ? `- 启动命令:\`npm run ${startScripts[0][0]}\`(入口 \`${entryField}\` 已确认存在)。若失败,先确认依赖已安装,再检查 Node 版本要求。`
+    : '- 启动链路未能自动检出(原因见附录 C):先确认依赖已安装,再按 `package.json` 的 `scripts` 与项目 README 人工确认启动方式。',
+  '',
+  '**能力清单看起来太少?**',
+  '',
+  '- 本扫描器识别 npm scripts、HTTP 路由(`app.get()` 类惯例)、事件发布(`emitter.emit()` / `this._onX.fire()` 惯例)、命令/工具注册(`registerCommand` / MCP tool / CLI command)。项目若用其他注册风格,用 `--patterns` 自定义提取器补充后重扫。',
+  '',
+  '**怀疑文档过期?**',
+  '',
+  '- 用附录 C 的基线 commit 自查:`git log --oneline <基线>..HEAD`;项目结构大改后用 `/ql-scan --force` 重扫。',
+].join('\n');
+
+// 附录 A.2 新代码放哪(推断指引)
+const whereNew = `| 要新增的内容 | 建议位置(推断) |
+|--------------|------------------|
+| API 端点 | ${tree.some(t => t.path.startsWith('routes/') || t.path.startsWith('api/')) ? '与现有路由文件同目录(routes/ 或 api/)' : '遵循项目现有分层;若无路由目录,建议新建 routes/ 并在入口注册'} |
+| 业务逻辑 | ${tree.some(t => t.path.startsWith('services/')) ? 'services/ 下按领域建文件' : '与现有模块就近放置,保持单一入口'} |
+| 测试 | ${tree.some(t => /(^|\/)(tests?|__tests__|e2e)\//.test(t.path)) ? '跟随现有测试目录,与被测文件同名' : '新建 tests/ 并与源码结构镜像'} |`;
+
+// 附录 C.2 未检出清单(严谨性铁律 2 的落地处:未检出显式声明,集中在附录而非正文)
+const notDetectedTable = notDetected.length
+  ? `| 项 | 状态 | 原因 | 建议 |\n|----|------|------|------|\n${notDetected.map(n => `| ${n.item} | 未检出(Not detected) | ${n.why} | ${n.advice} |`).join('\n')}`
+  : '扫描项全部检出,无未检出项。';
+
 chapterContent = `---
 chapter_id: "${CHAPTER_ID}"
 title: "${PROJECT_NAME}"
@@ -461,116 +561,100 @@ endpoints: ${routes.length}
 events: ${events.length}
 ---
 
-# 第 ${CHAPTER_ID.replace('chapter-', '')} 章 · ${PROJECT_NAME}(初始化)
+# 第 ${CHAPTER_ID.replace('chapter-', '')} 章 · ${PROJECT_NAME}(起步说明书)
 
-> **本文档由 \`/ql-scan\` 生成** —— 通过阅读项目目录结构,产出与 \`/ql-doc\` 完全一致格式的初始化章节。
-> 进入开发流程后,新章节由 \`/ql-doc\` 追加,本章节作为起点。
-> **不要手改本文件** —— 项目结构变化后用 \`/ql-scan --force\` 重扫覆盖。
+> 本章节是项目的**起步说明书**,由 \`/ql-scan\` 阅读代码自动生成。
+> §一/§二 中 \`<!-- manual -->\` 块内的内容欢迎人工撰写润色(重扫自动保留);其余机器节不要手改——项目结构变化后用 \`/ql-scan --force\` 重扫覆盖。
+
+**一句话:** ${PROJECT_DESC || `${PROJECT_NAME}${pkg ? '(Node.js 生态项目)' : ''},能力清单见 [§一](#一这个功能是什么)`}
+
+## 一、这个功能是什么
+
+<!-- manual:overview -->
+${overviewBody}
+
+(以上为生成器初稿;欢迎人工补充:这个项目解决什么问题、什么时候用、不适用什么场景)
+<!-- /manual:overview -->
+
+## 二、快速上手
+
+<!-- manual:quickstart -->
+${qsLines.join('\n')}
+${bootDiagram ? `\n${bootDiagram}\n` : ''}
+(以上为生成器初稿;欢迎人工补充第一次跑通项目的完整步骤与易踩的坑)
+<!-- /manual:quickstart -->
+
+## 三、使用说明
+
+> 本节所有能力条目均从代码反推,每条附 \`文件:行号\` 证据;与 OpenAPI 契约的对应关系待 \`/ql-design\` 后补全。
+
+${sec31}${sec32}${sec33}${sec34}${sec35}${sec36}---
+
+## 四、配置与限制
+
+### 4.1 技术栈
+
+${stackBlocks.length ? stackBlocks.join('\n\n') + '\n\n' : ''}**包管理器:** ${PKG_MANAGER}
+${pkg ? `\n**入口(main/bin):** ${entryField ? `\`${entryField}\`` : '未声明'}${entryField && !entryExists ? '(文件不存在,见附录 C)' : ''}\n` : ''}
+${sec42}
+---
+
+## 五、故障排查
+
+${troubleShooting}
 
 ---
 
-## 章节摘要
+## 附录 A · 交付与开发留档
+
+(本附录面向维护者与 AI 审计,使用者可跳过)
+
+### A.1 扫描信息
 
 | 字段 | 值 |
 |------|---|
-| 章节 ID | ${CHAPTER_ID} |
 | 来源命令 | /ql-scan |
 | 扫描路径 | ${relative(ROOT, SCAN_PATH) || '.'} |
-| 项目名 | ${PROJECT_NAME} |
 | 扫描基线 commit | ${HEAD_COMMIT || '(非 git 仓库,无法打点)'} |
 | 扫描条目数 | ${tree.length}(目录树显示 ${treeView.shown}) |
-| 命令数(npm scripts) | ${scripts.length} |
-| 路由数(带证据) | ${routes.length} |
-| 事件数(带证据) | ${events.length} |
-| 命令/工具注册数(带证据) | ${commands.length} |
-| 自定义提取数(--patterns) | ${customTotal} |
-| 状态 | initialized |
+| 生成时间 | ${NOW} |
 
-${PROJECT_DESC ? `**项目定位:** ${PROJECT_DESC}(来自 package.json description)\n\n` : ''}---
+### A.2 新代码放哪(推断指引)
 
-## 一、本章节承载的能力(从代码扫描)
+${whereNew}
 
-> 本节所有条目均为**从代码反推的已存在能力**,每条附 \`文件:行号\` 证据。
-> 与 OpenAPI 契约的对应关系待 \`/ql-design\` 后补全;在此之前,本节就是当前能力的唯一清单。
+### A.3 下一步
 
-### 1.1 命令清单(package.json scripts,原样列出)
-
-${scriptsTable}
-
-### 1.2 HTTP 路由(证据锚点)
-
-${routeTable}
-
-### 1.3 事件发布(证据锚点)
-
-${eventTable}
-
-### 1.4 命令 / 工具注册(证据锚点)
-
-${commandTable}
-${customExtractors.length ? `
-### 1.5 自定义提取(--patterns)
-
-${customSection}
-` : ''}---
-
-## 二、项目结构与启动流程
-
-### 2.1 技术栈
-
-**语言分布(按文件扩展名统计,扫描范围内全部文件):**
-
-${langTable}
-
-**框架/关键依赖(推断自 package.json):**
-
-${stackTable}
-
-**包管理器:** ${PKG_MANAGER}
-
-### 2.2 依赖清单
-
-${depTable}
-
-### 2.3 目录树(深度 ≤ ${MAX_DEPTH},忽略 node_modules/dist/build/.git 等)
-
-\`\`\`
-${treeView.text}
-\`\`\`
-
-> 目录职责注释(\`# xx(推断)\`)来自常见命名约定词典,**是推断而非事实**,以实际代码为准。
-
-### 2.4 启动流程
-
-${bootSection}
-
-### 2.5 新代码放哪(指引)
-
-| 要新增的内容 | 建议位置(推断) |
-|--------------|------------------|
-| API 端点 | ${tree.some(t => t.path.startsWith('routes/') || t.path.startsWith('api/')) ? '与现有路由文件同目录(routes/ 或 api/)' : '遵循项目现有分层;若无路由目录,建议新建 routes/ 并在入口注册'} |
-| 业务逻辑 | ${tree.some(t => t.path.startsWith('services/')) ? 'services/ 下按领域建文件' : '与现有模块就近放置,保持单一入口'} |
-| 测试 | ${tree.some(t => /(^|\/)(tests?|__tests__|e2e)\//.test(t.path)) ? '跟随现有测试目录,与被测文件同名' : '新建 tests/ 并与源码结构镜像'} |
-
-> 以上为基于目录结构的推断指引;进入器灵工作流后,以 \`/ql-design\` 产出的契约为准。
+- 尚无 OpenAPI 契约 → 运行 \`/ql-design\` 生成契约(§3.2 路由清单可作为讨论输入)
+- 已有 OpenAPI 契约 → 运行 \`/ql-build\` 直接构建
 
 ---
 
-## 三、与上一章节的对比
+## 附录 B · 与上一章节对比
 
-无(本章节为首个文档树节点)。
+无(本章节为初始化章节,是文档树的第一个节点;后续交付章节的对比见各章节附录 B)。
 
 ---
 
-## 四、关联文档
+## 附录 C · 数据来源与验证
+
+### C.1 关联文档
 
 - [文档树索引](../README.md)
 - 项目状态:${existsSync(join(ROOT, '.planning', 'STATE.md')) ? '[../.planning/STATE.md](../../.planning/STATE.md)' : '未检出(尚未进入器灵工作流)'}
 - OpenAPI 契约:${existsSync(join(ROOT, '.planning', 'context', 'openapi.yaml')) ? '[.planning/context/openapi.yaml](../../.planning/context/openapi.yaml)' : '未检出(运行 /ql-design 后生成)'}
 
----
+### C.2 未检出清单
 
-## 五、变更日志
+${notDetectedTable}
+
+### C.3 证据与推断约定
+
+- §三 各表中的 \`文件:行号\` 是**证据锚点**——每条能力均从代码反推,可对照源码核实。
+- 带"(推断)"的内容(目录职责、依赖用途、新代码位置)来自命名约定词典,**是推断而非事实**,以实际代码为准。
+- 新鲜度:frontmatter \`last_mapped_commit\` 即生成时的 git HEAD;运行 \`git log --oneline <基线>..HEAD\` 判断文档是否过期。
+
+### C.4 变更日志
 
 | 日期 | 操作 | 说明 |
 |------|------|------|
@@ -594,8 +678,19 @@ function scanSecrets(text, where) {
   }
 }
 
-// === 渲染 & 写章节 ===
+// === 渲染 & 写章节(重扫时保留人工撰写的 manual 块) ===
 if (!UPDATE_INDEX_ONLY) {
+  if (FORCE && existingBySlug && existsSync(CHAPTER_FILE)) {
+    try {
+      const oldChapter = readFileSync(CHAPTER_FILE, 'utf8');
+      const oldIds = Object.keys(extractManualBlocks(oldChapter));
+      const before = chapterContent;
+      chapterContent = preserveManual(chapterContent, oldChapter);
+      if (chapterContent !== before && oldIds.length) {
+        ok(`人工保护区:已从旧章节原样保留 manual 块(${oldIds.join(', ')})`);
+      }
+    } catch { /* 旧文件不可读时按无 manual 处理 */ }
+  }
   scanSecrets(chapterContent, '章节文档');
   writeFileSync(CHAPTER_FILE, chapterContent);
   ok(`章节文件已生成:${CHAPTER_FILE}`);
@@ -629,60 +724,88 @@ const chapterMetas = allChapters.map(f => {
 const totalEndpoints = chapterMetas.reduce((a, c) => a + (parseInt(c.endpoints) || 0), 0);
 const totalEvents = chapterMetas.reduce((a, c) => a + (parseInt(c.events) || 0), 0);
 const pkgVersion = pkg && pkg.version ? pkg.version : '0.0.0';
-const indexChapterRows = chapterMetas.map(c =>
-  `| [${c.id}](./chapters/${c.file}) | ${c.title} | ${c.status} | ${c.source} | ${c.endpoints ?? '—'} | ${c.events ?? '—'} | ${c.generated} |`).join('\n');
 
 const newestScan = chapterMetas.filter(c => c.source === '/ql-scan')[0];
-const indexContent = `# ${PROJECT_NAME} · 文档树(产品说明书)
+const scanChapterFile = newestScan ? newestScan.file : null;
 
-> 本目录由器灵工作流自动维护,是本项目的**门户型文档**。
-> 章节文件 = \`/ql-scan\`(项目初始化)+ \`/ql-doc\`(构建交付后)共同产出,两者结构完全一致。
-${PROJECT_DESC ? `> **项目定位:** ${PROJECT_DESC}\n\n` : ''}## 如何阅读(按角色 × 意图)
+// 首页快速上手(真实检出命令;检不出指向起步章节)
+const qsInstall = PKG_MANAGER in { npm: 1, pnpm: 1, yarn: 1 }
+  ? `\`${ { npm: 'npm install', pnpm: 'pnpm install', yarn: 'yarn install' }[PKG_MANAGER] }\``
+  : '安装方式见起步章节 §二';
+const qsRun = bootDetected ? `\`npm run ${startScripts[0][0]}\`` : '启动方式见起步章节 §二';
+
+// 功能与章节地图行(覆盖什么:scan 章节 = 项目整体;doc 章节 = 章节标题)
+const mapRows = chapterMetas.map(c => {
+  const what = c.source === '/ql-scan' ? '项目整体(起步:能力总览与上手)' : c.title;
+  return `| [${c.id}](./chapters/${c.file}) | ${what} | ${c.status} | [§二 快速上手](./chapters/${c.file}#二快速上手) |`;
+}).join('\n');
+
+const indexContent = `# ${PROJECT_NAME} · 项目说明书
+${PROJECT_DESC ? `\n> **${PROJECT_DESC}**\n>\n> ` : '\n> '}本页由器灵工作流自动维护。章节 = 说明书分册:\`/ql-scan\` 产出起步册,\`/ql-doc\` 在每次交付后追加功能册(正文五章面向使用者,附录三章是留档与审计)。
+
+## 快速上手
+
+1. **安装:** ${qsInstall}
+2. **运行:** ${qsRun}
+3. **详细上手:** ${scanChapterFile ? `[起步章节 · §二 快速上手](./chapters/${scanChapterFile}#二快速上手)` : '(尚未生成起步章节,运行 /ql-scan)'}
+
+## 功能与章节地图
+
+| 章节 | 覆盖什么 | 状态 | 上手入口 |
+|------|----------|------|----------|
+${mapRows || '|(暂无章节)| | | |'}
+
+---
+
+## 参考汇总(全章节累积)
+
+| 维度 | 数量 | 明细位置 |
+|------|------|----------|
+| API 端点(合计) | ${totalEndpoints} | 各章节 §三 使用说明 |
+| 事件(合计) | ${totalEvents} | 同上 |
+
+### 路径清单(跨章节去重,/ql-doc 章节累积后填)
+
+| 方法 | 路径 | 章节 | 说明 |
+|------|------|------|------|
+| | | | |
+
+### 错误码汇总(/ql-doc 章节累积后填)
+
+| HTTP | code | 章节 | 含义 |
+|------|------|------|------|
+| | | | |
+
+### 数据模型汇总(/ql-doc 章节累积后填)
+
+| Schema | 章节 | 字段数 | 说明 |
+|--------|------|--------|------|
+| | | | |
+
+## 如何阅读(按角色 × 意图)
 
 | 你想做什么 | 去哪里看 |
 |------------|----------|
-| 快速了解项目是什么、能做什么 | 本页"项目元信息" + 初始化章节的 §一/§二 |
-| 查某个 API 怎么调用 | 章节的 §一(端点表 + 示例);初始化章节的 §一.2 路由清单 |
-| 了解代码结构与启动方式 | 初始化章节的 §二(技术栈/目录树/启动流程) |
-| 知道某次交付改了什么、怎么迁移 | 对应章节的 §三(与上一章节对比) |
-| 给项目加新功能,代码放哪 | 初始化章节的 §二.5"新代码放哪" + \`/ql-design\` |
+| 快速了解项目是什么、能做什么 | 本页定位 + 起步章节 §一 |
+| 把项目跑起来 | 起步章节 §二 快速上手 |
+| 查某个 API / 命令怎么用 | 对应章节 §三 使用说明 |
+| 调用报错了 | 对应章节 §五 故障排查 |
+| 知道某次交付改了什么、怎么迁移 | 对应章节 附录 B |
+| 给项目加新功能,代码放哪 | 起步章节 附录 A + \`/ql-design\` |
 
-## 章节列表
+## 关于本文档
 
-| 章节 | 标题 | 状态 | 来源 | API 数 | 事件数 | 生成日期 |
-|------|------|------|------|--------|--------|----------|
-${indexChapterRows || '|(暂无章节)| | | | | |'}
+<details>
+<summary>生成方式、版本、新鲜度与严谨性约定(点开展开)</summary>
 
----
+- **生成:** 器灵工作流 v${QL_VERSION};\`/ql-scan\`(项目初始化)+ \`/ql-doc\`(构建交付后)共同维护,本页**不要手改**。
+- **章节结构:** 正文五章 = 说明书(是什么 / 快速上手 / 使用说明 / 配置与限制 / 故障排查);附录三章 = 留档与审计(交付留档 / 章节对比 / 数据来源与验证)。
+- **人工撰写:** 章节内 \`<!-- manual:ID -->\` 块可人工撰写润色,重新生成时自动保留。
+- **项目元信息:** 项目名 ${PROJECT_NAME} · 版本 ${pkgVersion} · 总章节数 ${chapterMetas.length} · 包管理器 ${PKG_MANAGER} · 文档基线 commit ${newestScan && newestScan.commit ? newestScan.commit.slice(0, 8) + '(scan 章节)' : '(未打点)'}
+- **新鲜度自查:** \`git log --oneline <基线>..HEAD\` 条目较多说明代码已演进、文档可能过期;项目结构大改后运行 \`/ql-scan --force\` 重扫。
+- **严谨性约定:** ①证据锚点——能力条目附 \`文件:行号\`,API 以 \`openapi.yaml\` 为单一可信源 ②未检出显式声明——扫不到写"未检出(Not detected)"+原因,绝不编造 ③推断必须标注"(推断)" ④不画假图——mermaid 只用真实检测值 ⑤密钥扫描——产出不含敏感值。
 
-## 能力总览(全章节汇总)
-
-| 维度 | 数量 | 说明 |
-|------|------|------|
-| API 端点(合计) | ${totalEndpoints} | scan 章节按代码路由计数;doc 章节按 OpenAPI 计数 |
-| 事件(合计) | ${totalEvents} | 同上 |
-
-> 明细(请求/响应/示例/错误码)在各章节 §一;跨章节去重后的路径级清单由 \`/ql-doc\` 章节累积后在此汇总。
-
----
-
-## 项目元信息
-
-| 字段 | 值 |
-|------|---|
-| 项目名 | ${PROJECT_NAME} |
-| 版本 | ${pkgVersion} |
-| 总章节数 | ${chapterMetas.length} |
-| 包管理器 | ${PKG_MANAGER} |
-| 文档基线 commit | ${newestScan && newestScan.commit ? `${newestScan.commit.slice(0, 8)}(scan 章节)` : '(未打点)'} |
-
-> **新鲜度提示:** 若当前 HEAD 已落后文档基线 commit 较多(可用 \`git log --oneline <基线>..HEAD\` 查看),说明代码已演进、文档可能过期——项目结构大改后运行 \`/ql-scan --force\` 重扫。
-
----
-
-**生成:** 器灵工作流 v${QL_VERSION},任何章节文件变化时增量更新
-
-**维护原则:** 本文件由 \`scripts/docsmap.mjs\` 自动维护,**不要手改**
+</details>
 `;
 
 scanSecrets(indexContent, '索引文件');
@@ -737,11 +860,11 @@ if (!UPDATE_INDEX_ONLY) {
     err(`断言 5:索引文件缺 ${CHAPTER_ID} 链接`);
   }
 
-  // 断言 6:5 节结构完整
-  const sections = ['一、本章节承载的能力', '二、项目结构与启动流程', '三、与上一章节的对比', '四、关联文档', '五、变更日志'];
+  // 断言 6:说明书骨架完整(正文五章 + 附录三章,与 ql-doc 模板同构)
+  const sections = ['一、这个功能是什么', '二、快速上手', '三、使用说明', '四、配置与限制', '五、故障排查', '附录 A', '附录 B', '附录 C'];
   const missing = sections.filter(s => !writtenChapter.includes(s));
   if (missing.length === 0) {
-    ok('断言 6:5 节结构完整(与 ql-doc 一致)');
+    ok('断言 6:说明书骨架完整(正文五章 + 附录三章,与 ql-doc 一致)');
   } else {
     err(`断言 6:缺失节 ${missing.join(', ')}`);
   }
@@ -779,6 +902,15 @@ if (!UPDATE_INDEX_ONLY) {
     ok(`断言 10:版本号 ${QL_VERSION} 来自 package.json(单一来源)`);
   } else {
     err('断言 10:版本号未正确从 package.json 读取');
+  }
+
+  // 断言 11:manual 保护块标记配对完整(防止人工保护区标记损坏导致下次重扫丢内容)
+  const openTags = (writtenChapter.match(/<!-- manual:[a-zA-Z0-9_-]+ -->/g) || []).length;
+  const closeTags = (writtenChapter.match(/<!-- \/manual:[a-zA-Z0-9_-]+ -->/g) || []).length;
+  if (openTags === closeTags && openTags >= 2) {
+    ok(`断言 11:manual 保护块配对完整(${openTags} 对:overview / quickstart)`);
+  } else {
+    err(`断言 11:manual 保护块标记不配对(开 ${openTags} / 闭 ${closeTags},至少应有 2 对)`);
   }
 }
 

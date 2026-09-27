@@ -7,11 +7,11 @@ consumes: openapi.yaml, event-flow.md, build/skeleton-report.md, build/fill-repo
 -->
 
 <purpose>
-**章节留档生成** —— 在 `/ql-deliver` 成功推送 PR 后,自动产出:
-1. **章节文件**:`.qiling/docs/chapters/chapter-NN-*.md`(API 文档 + 开发流程留档)
-2. **索引文件**:`.qiling/docs/README.md`(所有章节的汇总索引)
+**章节留档生成(说明书式)** —— 在 `/ql-deliver` 成功推送 PR 后,自动产出:
+1. **章节文件**:`.qiling/docs/chapters/chapter-NN-*.md`(功能说明书:正文五章 = 是什么/快速上手/使用说明/配置与限制/故障排查;附录三章 = 交付留档/章节对比/数据来源与验证)
+2. **索引文件**:`.qiling/docs/README.md`(项目说明书首页:定位 → 快速上手 → 功能与章节地图 → 参考汇总 → 关于本文档)
 
-**核心定位:** 章节文档既是项目开发留档,也是该阶段 API 的开发者文档。
+**核心定位:** 章节文档是该阶段交付功能的**说明书**,先服务使用者;开发流程留档降级为附录 A。
 **触发位置:** 在 `workflows/deliver.md` 的"步骤 3 推送 PR"成功之后。
 </purpose>
 
@@ -49,31 +49,36 @@ SLUG=$(echo "$CHAPTER_TITLE" | tr '[:upper:] ' '[:lower:]-' | tr -cd 'a-z0-9-')
 CHAPTER_FILE=".qiling/docs/chapters/${CHAPTER_ID}-${SLUG}.md"
 ```
 
-## 步骤 3: 从 OpenAPI 渲染 API 部分
+## 步骤 3: 从 OpenAPI 渲染说明书正文(§一/§二/§三/§四/§五)
 
-从 `templates/chapter.md` 取 §一"API 详细文档"模板,自动填充:
+从 `templates/chapter.md` 取模板,自动填充:
 
 | 数据来源 | 填充位置 |
 |---------|----------|
-| `openapi.yaml` paths | 端点清单表 + 端点详情 |
-| `openapi.yaml` components.schemas | 数据模型表 |
-| `openapi.yaml` 错误响应 | 错误码参考表 |
-| 推断 | 使用示例(curl + TS + Python) |
+| `openapi.yaml` info.description | 章节顶部"一句话" + §一 覆盖能力概述 |
+| `openapi.yaml` security scheme | §二 快速上手的认证前置 + §四 认证方式 |
+| 第一个 GET 端点 + 示例生成 | §二 快速上手"第一个调用"(可复制 curl + 预期结果) |
+| `openapi.yaml` paths | §三 端点清单表 + 端点详情(参数表/响应/示例) |
+| `openapi.yaml` components.schemas | §三 数据模型表 |
+| `openapi.yaml` 错误响应 | §五 故障排查(错误码 + 含义 + 怎么处理) |
+| 速率限制/分页约定/known gaps | §四 配置与限制 |
 
-## 步骤 4: 从 build 报告渲染流程部分
+**§一(manual:overview)与 §二(manual:quickstart)生成初稿**——语言面向使用者,禁止把生成流程细节写进正文。
 
-从 `templates/chapter.md` 取 §二"开发流程留档"模板:
+## 步骤 4: 从 build 报告渲染附录 A(交付与开发留档)
+
+从 `templates/chapter.md` 取附录 A 模板:
 
 | 数据来源 | 填充位置 |
 |---------|----------|
 | `STATE.md` current_phase | 阶段编号 |
-| `skeleton-report.md` | 骨架阶段摘要 |
-| `fill-report.md` | 填充阶段摘要 |
-| `verification.md` | 验证阶段摘要 |
-| `git log` | Git 历史摘要 |
-| mermaid timeline(模板内嵌) | 阶段时序图 |
+| `skeleton-report.md` | A.1 时序图 + A.3 构建产出 |
+| `fill-report.md` | 同上(mock 替换/测试统计) |
+| `verification.md` | A.3 验证产出 |
+| `git log` | A.5 Git 历史摘要 |
+| mermaid timeline(模板内嵌) | A.1 阶段时序图(只用报告真实值) |
 
-## 步骤 5: 与上一章节对比(变更留档)
+## 步骤 5: 与上一章节对比(→ 附录 B)
 
 ```bash
 # 查找上一章节文件
@@ -83,16 +88,16 @@ if [ -n "$PREV_CHAPTER" ]; then
   # diff OpenAPI:对比 path 增删
   # diff schema:对比 schema 字段变化
   # diff errors:对比 error 列表变化
-  echo "本章节相对 ${PREV_CHAPTER} 的 API 变更"
+  echo "本章节相对 ${PREV_CHAPTER} 的 API 变更 → 附录 B"
 fi
 ```
 
-## 步骤 6: 写章节文件
+## 步骤 6: 保留人工撰写内容,写章节文件
+
+**人工保护区(硬性要求):** 若被覆盖的旧章节存在 `<!-- manual:ID -->…<!-- /manual:ID -->` 块,**同 ID 块必须原样写入新章节**(那是人工撰写的概述与上手说明,覆盖即事故)。`scripts/docsmap.mjs` 的 `preserveManual()` 是参考实现。
 
 ```bash
-# 章节文件 = 渲染后的完整 Markdown
-# 内容来源:templates/chapter.md 模板 + 上述 3-5 步的填充结果
-
+# 章节文件 = 渲染后的完整 Markdown(manual 块已保留)
 cat "$RENDERED_CHAPTER" > "$CHAPTER_FILE"
 echo "✓ 章节文件已生成:$CHAPTER_FILE"
 ```
@@ -101,11 +106,11 @@ echo "✓ 章节文件已生成:$CHAPTER_FILE"
 
 读取 `templates/chapter-index.md`,然后:
 
-1. **章节列表表:** 扫描 `.qiling/docs/chapters/chapter-*.md`,按 ID 升序列出,提取 frontmatter 字段
-2. **API 总览:** 合并所有章节的 §一端点表,去重
-3. **错误码汇总:** 合并所有章节的 §一.4 错误码表,去重
-4. **数据模型汇总:** 合并所有章节的 §一.3 数据模型表,去重
-5. **项目元信息:** 从 `STATE.md` 与最新章节 frontmatter 汇总
+1. **功能与章节地图:** 扫描 `.qiling/docs/chapters/chapter-*.md`,按 ID 升序列出,提取 frontmatter 字段
+2. **参考汇总:** 合并所有章节 §三 的端点表,去重
+3. **错误码汇总:** 合并所有章节 §五 故障排查的错误码表,去重
+4. **数据模型汇总:** 合并所有章节 §三 数据模型表,去重
+5. **关于本文档:** 从 `STATE.md` 与最新章节 frontmatter 汇总版本/基线 commit/章节数,折叠区呈现
 
 ```bash
 cat "$RENDERED_INDEX" > ".qiling/docs/README.md"
@@ -179,6 +184,6 @@ echo "📝 生成章节文档..."
 
 ## 与 discuss 的跳接点
 
-首次生成章节时,§三"与上一章节对比"会显示"无上一章节"——这是正常的首章节状态。
+首次生成章节时,附录 B"与上一章节对比"会显示"无上一章节"——这是正常的首章节状态。
 
 </integration>

@@ -5,6 +5,37 @@
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.17.0] - 2026-09-27
+
+### 文档树说明书化重写(/ql-scan、/ql-doc 产出从"交付快照"变为"说明书")
+
+**背景:** 用户反馈生成的文档"很奇怪",不像说明书。研究结论:旧结构是**交付快照 + 开发流水账**视角——章节 = 一次 ql 循环的快照、开头三分之一是流程元数据(章节摘要/扫描计数/基线 commit)、"未检出(Not detected)"等验证噪音直接印在正文、开发流程留档占据正文大节。参照 Diátaxis(参考与指南分离)、GB/T 8567-2006 用户手册(使用过程 + 出错处理)、README/quickstart 最佳实践(makeareadme、The Good Docs Project)重写为**说明书**视角。
+
+**结构变化:**
+
+- **章节文件 = 功能说明书**:正文五章面向使用者——§一 这个功能是什么、§二 快速上手(第一个可复制的成功路径)、§三 使用说明(API/命令参考,保留原有参数表 + 响应 + 示例的渲染质量)、§四 配置与限制、§五 故障排查(错误码 + 含义 + **怎么处理**);附录三章面向维护者与审计——附录 A 交付与开发留档(原"开发流程留档"整体降级)、附录 B 与上一章节对比、附录 C 数据来源与验证
+- **索引 = 项目说明书首页**:`.qiling/docs/README.md` 重排为一句话定位 → 快速上手(真实检出命令)→ 功能与章节地图 → 参考汇总 → "关于本文档"折叠区(生成方式/版本/新鲜度/严谨性约定全部收拢,不再占首屏)
+- **呈现纪律**:未检出项从正文挪到附录 C"未检出清单"(状态/原因/建议);正文扫不到的小节整体省略;证据锚点(`文件:行号`)保留在表格内;新鲜度提示进折叠区——严谨性机制全部保留,只是不再把验证过程印给读者
+- **人工保护区(打破"只读快照"死结)**:章节内 `<!-- manual:ID -->…<!-- /manual:ID -->` 块(§一 overview / §二 quickstart)供人工撰写润色;`--force` 重扫与 `/ql-doc` 重新生成时**同 ID 块原样保留**(`docsmap.mjs` 新增 `preserveManual()`)——解决"机器覆盖导致没人写说明"的根本矛盾
+
+**配套同步:**
+
+- `scripts/docsmap.mjs`:章节与索引渲染重写;断言 6 改为校验说明书骨架(正文五章 + 附录三章);新增断言 11(manual 块标记配对完整),10 → 11 条
+- `scripts/chapter-render.mjs`:演示渲染同步新骨架;新增断言 8(说明书骨架 + manual 配对),7 → 8 条
+- `scripts/flow-verify.mjs`:ql-doc 阶段模拟章节同步新骨架(manual 块配对检查)
+- `scripts/migrate.mjs`:新增迁移提示规则 M5(检测 0.17.0 前文档树格式,提示 `/ql-scan --force` 重扫;文档树是可重生成产物,不做破坏性迁移)
+- `templates/chapter.md`、`templates/chapter-index.md` 重写;`skills/ql-doc`、`skills/ql-scan`、`workflows/doc.md`、`workflows/scan.md` 同步;`docs/CHAPTER-ARCHITECTURE.md` 与 README 机制表更新
+
+**验证证据:**
+
+- `npm run docsmap`(重扫本仓库):11 条断言全绿;manual 保留路径实测(人工润色 → --force → 内容原样保留)
+- `npm run chapter:render`:10/10 通过
+- `npm run verify:flow`:20/20 通过
+- `npm run migrate:test`:17/17 通过
+- `npm run validate`:0 错误
+
+**升级指引:** 已有项目无需破坏性迁移——运行 `/ql-update`(会提示)后执行 `/ql-scan --force` 重扫文档树;章节内已人工撰写的内容请先移入 `<!-- manual:ID -->` 块再重扫,否则会被覆盖。
+
 ## [0.16.0] - 2026-09-20
 
 ### 修复与增强:真实项目全链路反馈落地(vscode-ue-helper 走通 update → scan → next → design → build)

@@ -203,28 +203,42 @@ console.log('\n═══ 阶段 3.5:ql-doc(章节留档生成)═══');
 
 mkdirSync(join(SANDBOX, '.qiling/docs/chapters'), { recursive: true });
 
-// 模拟章节文件
+// 模拟章节文件(说明书式:正文五章 + 附录三章)
 const chapterFile = `---
 chapter_id: "chapter-01"
 title: "演示项目"
 phase: 1
 generated_at: "2026-08-28T15:39:02Z"
-generated_by: "器灵工作流 v0.4.0"
+generated_by: "器灵工作流 v0.17.0"
 pr_url: "https://github.com/075dev/demo/pull/1"
 status: "shipped"
 ---
 
 # 第 1 章 · 演示项目
 
-## 章节摘要
-- 端点数:2
-- 事件数:1
+## 一、这个功能是什么
 
-## 一、本章节交付的 API
+<!-- manual:overview -->
+**覆盖能力:** 2 个端点、1 个事件,清单见 §三。
+<!-- /manual:overview -->
+
+## 二、快速上手
+
+<!-- manual:quickstart -->
+**前置:** Bearer Token。第一个调用:GET /resources。
+<!-- /manual:quickstart -->
+
+## 三、使用说明
 | GET | /resources | 列出资源 |
 | GET | /resources/{id} | 单个资源 |
 
-## 二、开发流程留档
+## 四、配置与限制
+- 认证:Bearer Token
+
+## 五、故障排查
+| 404 | NOT_FOUND | 资源不存在 | 核对资源 id |
+
+## 附录 A · 交付与开发留档
 - 阶段 1 讨论:完成
 - 阶段 2 骨架:完成(2/2 端点)
 - 阶段 3 填充:完成(mocks 替换 100%)
@@ -234,20 +248,23 @@ status: "shipped"
 writeFileSync(join(SANDBOX, '.qiling/docs/chapters/chapter-01-demo.md'), chapterFile);
 
 if (chapterFile.includes('chapter_id: "chapter-01"')) ok('章节:chapter_id 字段');
-if (chapterFile.includes('## 一、本章节交付的 API')) ok('章节:含 §一 API 文档');
-if (chapterFile.includes('## 二、开发流程留档')) ok('章节:含 §二 流程留档');
-if (chapterFile.includes('## 章节摘要')) ok('章节:含摘要');
+if (chapterFile.includes('## 三、使用说明')) ok('章节:含 §三 使用说明');
+if (chapterFile.includes('## 附录 A')) ok('章节:含附录 A 留档');
+if (chapterFile.includes('<!-- manual:overview -->') && chapterFile.includes('<!-- /manual:overview -->')) ok('章节:manual 块配对');
 
-// 模拟索引文件
-const indexFile = `# 演示项目 · 章节文档
+// 模拟索引文件(说明书首页)
+const indexFile = `# 演示项目 · 项目说明书
 
-## 章节列表
-| 章节 | 标题 | 状态 | API 数 |
-| [chapter-01](./chapters/chapter-01-demo.md) | 演示项目 | ✅ shipped | 2 |
+## 快速上手
+1. 认证:Bearer Token
+
+## 功能与章节地图
+| 章节 | 覆盖什么 | 状态 | 上手入口 |
+| [chapter-01](./chapters/chapter-01-demo.md) | resources API | shipped | §二 快速上手 |
 `;
 writeFileSync(join(SANDBOX, '.qiling/docs/README.md'), indexFile);
 
-if (indexFile.includes('## 章节列表')) ok('索引:含章节列表');
+if (indexFile.includes('## 功能与章节地图')) ok('索引:含功能与章节地图');
 if (indexFile.includes('chapter-01')) ok('索引:链接到 chapter-01');
 
 ok('章节产出:.qiling/docs/chapters/chapter-NN-*.md 已生成');
