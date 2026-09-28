@@ -7,11 +7,13 @@ consumes: openapi.yaml, event-flow.md, build/skeleton-report.md, build/fill-repo
 -->
 
 <purpose>
-**章节留档生成(说明书式)** —— 在 `/ql-deliver` 成功推送 PR 后,自动产出:
-1. **章节文件**:`.qiling/docs/chapters/chapter-NN-*.md`(功能说明书:正文五章 = 是什么/快速上手/使用说明/配置与限制/故障排查;附录三章 = 交付留档/章节对比/数据来源与验证)
-2. **索引文件**:`.qiling/docs/README.md`(项目说明书首页:定位 → 快速上手 → 功能与章节地图 → 参考汇总 → 关于本文档)
+**章节留档生成(教科书式)** —— 在 `/ql-deliver` 成功推送 PR 后,自动产出到项目书:
+1. **章节文件**:`.qiling/docs/chapters/chapter-NN-*.md`——本章导学(学习目标/前置/读法)→ 正文五章(是什么/快速上手/使用说明/配置与限制/故障排查)→ 本章小结/下一章(要点回顾/学习路径)→ 附录三章(交付留档/章节对比/数据来源与验证)
+2. **索引文件**:`.qiling/docs/README.md`——前言(讲什么/适合谁/怎么读)→ 目录(按篇分组)→ 参考汇总 → 术语表 → 关于本书
 
-**核心定位:** 章节文档是该阶段交付功能的**说明书**,先服务使用者;开发流程留档降级为附录 A。
+**篇章组织:** 每章 frontmatter `part` = 篇名,按知识域归组(一篇可多章);目录按篇分组、按学习顺序排列。
+
+**核心定位:** 项目 = 一本教科书,每次交付 = 追加一章;读者按导学循序渐进,查用型读者直接进 §三。
 **触发位置:** 在 `workflows/deliver.md` 的"步骤 3 推送 PR"成功之后。
 </purpose>
 
@@ -49,21 +51,24 @@ SLUG=$(echo "$CHAPTER_TITLE" | tr '[:upper:] ' '[:lower:]-' | tr -cd 'a-z0-9-')
 CHAPTER_FILE=".qiling/docs/chapters/${CHAPTER_ID}-${SLUG}.md"
 ```
 
-## 步骤 3: 从 OpenAPI 渲染说明书正文(§一/§二/§三/§四/§五)
+## 步骤 3: 从 OpenAPI 渲染教科书章(教学外壳 + 正文五章)
 
 从 `templates/chapter.md` 取模板,自动填充:
 
 | 数据来源 | 填充位置 |
 |---------|----------|
-| `openapi.yaml` info.description | 章节顶部"一句话" + §一 覆盖能力概述 |
+| 知识域归属(从端点语义/项目模块归纳) | frontmatter `part`(篇名;已有相近篇并入,否则新开一篇) |
+| `openapi.yaml` info.description | 章节顶部"一句话" + §一 覆盖能力概述 + 导学的"本章你将学到" |
+| 章节 ID 升序的前置章 | 导学"前置章节"(起步章之后默认指第一章;可按依赖人工改写) |
 | `openapi.yaml` security scheme | §二 快速上手的认证前置 + §四 认证方式 |
 | 第一个 GET 端点 + 示例生成 | §二 快速上手"第一个调用"(可复制 curl + 预期结果) |
 | `openapi.yaml` paths | §三 端点清单表 + 端点详情(参数表/响应/示例) |
 | `openapi.yaml` components.schemas | §三 数据模型表 |
 | `openapi.yaml` 错误响应 | §五 故障排查(错误码 + 含义 + 怎么处理) |
 | 速率限制/分页约定/known gaps | §四 配置与限制 |
+| 端点/事件计数 | 本章小结(要点回顾,纯真实数据) |
 
-**§一(manual:overview)与 §二(manual:quickstart)生成初稿**——语言面向使用者,禁止把生成流程细节写进正文。
+**教学外壳与 §一/§二 均生成初稿**(manual:syllabus / overview / quickstart / summary / next)——语言面向学习者,禁止把生成流程细节写进正文。
 
 ## 步骤 4: 从 build 报告渲染附录 A(交付与开发留档)
 
@@ -106,11 +111,11 @@ echo "✓ 章节文件已生成:$CHAPTER_FILE"
 
 读取 `templates/chapter-index.md`,然后:
 
-1. **功能与章节地图:** 扫描 `.qiling/docs/chapters/chapter-*.md`,按 ID 升序列出,提取 frontmatter 字段
+1. **目录:** 扫描 `.qiling/docs/chapters/chapter-*.md`,读 frontmatter `part` 分组、按章号排序,渲染树状目录
 2. **参考汇总:** 合并所有章节 §三 的端点表,去重
 3. **错误码汇总:** 合并所有章节 §五 故障排查的错误码表,去重
-4. **数据模型汇总:** 合并所有章节 §三 数据模型表,去重
-5. **关于本文档:** 从 `STATE.md` 与最新章节 frontmatter 汇总版本/基线 commit/章节数,折叠区呈现
+4. **数据模型汇总 / 术语表:** 数据模型合并去重;术语表由章节累积或人工补充,机器不臆造
+5. **关于本书:** 从 `STATE.md` 与最新章节 frontmatter 汇总版本/基线 commit/章节数,折叠区呈现
 
 ```bash
 cat "$RENDERED_INDEX" > ".qiling/docs/README.md"

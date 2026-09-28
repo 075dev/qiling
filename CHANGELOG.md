@@ -5,6 +5,45 @@
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.18.0] - 2026-09-27
+
+### 项目书教科书化:导学/小结教学外壳 + 前言/分篇目录/术语表
+
+**背景:** 0.17.0 说明书化后用户进一步反馈:要"像书本一样章节构造,像教科书一样"。调研教科书教学设计(学习目标 → 正文 → 小结的章内骨架)与出版惯例(前言/目录/篇→章/附录/术语表的前后件结构)后,把 0.17.0 的说明书正文**保留为参考骨架**,外面套上教学外壳,并把全书组织升级为书本结构。
+
+**章节结构(教学外壳 + 参考正文 + 留档附录):**
+
+- **本章导学**(manual:syllabus):"本章你将学到"(真实能力计数)、前置章节、读法建议——教科书"章首学习目标"惯例;"先读小结再回看正文"写进读法
+- **正文五章保留**:§一 是什么 / §二 快速上手 / §三 使用说明 / §四 配置与限制 / §五 故障排查
+- **本章小结**(manual:summary):真实数据的要点回顾——教科书"章末小结"惯例
+- **下一章**(manual:next):按学习路径指向下一章,不必等于交付顺序——教科书"延伸阅读"惯例
+- frontmatter 新增 `part`(篇名):起步章固定"第一篇 · 认识项目";功能章由 /ql-doc 按知识域归篇,一篇可多章
+
+**全书结构(首页 = 书的前件 + 后件):**
+
+- **前言**:这本书讲什么 / 适合谁 / 怎么读(查用型读者直接进 §三)
+- **目录**:按 `part` 分篇、按学习顺序排列的树状目录,取代扁平章节列表
+- **参考汇总**保留;新增**术语表**(机器不臆造,由章节累积或人工补充)
+- **关于本书**:原"关于本文档"折叠区改名,收拢生成方式/版本/新鲜度/严谨性约定
+
+**配套同步:**
+
+- `scripts/docsmap.mjs`:章节加教学外壳渲染、`part` 字段;索引重写为前言/分篇目录/术语表;断言 6 关键词更新(导学/小结)、断言 11 阈值 ≥4(五处 manual 块)
+- `scripts/chapter-render.mjs` / `scripts/flow-verify.mjs`:演示与模拟同步书本骨架
+- `scripts/migrate.mjs`:M5 提示规则扩展(0.17 说明书首页也视为旧结构,提示重扫)
+- `templates/chapter.md`、`templates/chapter-index.md` 重写;`skills/ql-doc`、`skills/ql-scan`、`workflows/doc.md`、`workflows/scan.md` 同步;`docs/CHAPTER-ARCHITECTURE.md`、README 机制表更新
+- 人工保护区扩为五处:syllabus / overview / quickstart / summary / next
+
+**验证证据:**
+
+- `npm run docsmap`(重扫本仓库):11 条断言全绿
+- `npm run chapter:render`:10/10 通过(断言 8:书本骨架完整 + manual 5 对)
+- `npm run verify:flow`:20/20 通过(章节含导学与小结、索引含分篇目录)
+- `npm run migrate:test`:17/17 通过
+- `npm run validate`:0 错误
+
+**升级指引:** 与 0.17.0 相同——`/ql-update` 后 `/ql-scan --force` 重扫;manual 人工块(新增 syllabus/summary/next 三处)重扫自动保留。
+
 ## [0.17.0] - 2026-09-27
 
 ### 文档树说明书化重写(/ql-scan、/ql-doc 产出从"交付快照"变为"说明书")

@@ -250,10 +250,11 @@ const firstGet = endpoints.find(e => e.method === 'GET') || endpoints[0];
 const chapterContent = `---
 chapter_id: "chapter-01"
 title: "演示项目"
+part: "第一篇 · 演示功能"
 phase: 1
 generated_at: "2026-08-28T15:39:02Z"
-generated_by: "器灵工作流 v0.17.0"
-ql_version: "0.17.0"
+generated_by: "器灵工作流 v0.18.0"
+ql_version: "0.18.0"
 git_commit: "demo0000"
 pr_url: "https://github.com/075dev/qiling/pull/1"
 status: "shipped"
@@ -263,10 +264,18 @@ events: ${eventCount}
 
 # 第 1 章 · 演示项目
 
-> 本章节是演示项目的**功能说明书**,由器灵 chapter-render.mjs 端到端渲染产出。
-> §一/§二 中 \`<!-- manual -->\` 块内的内容欢迎人工撰写润色(重新生成自动保留);其余机器节不要手改。
+> 本章是演示项目的功能章,由器灵 chapter-render.mjs 端到端渲染产出。
+> \`<!-- manual -->\` 块内的内容欢迎人工撰写润色(重新生成自动保留);其余机器节不要手改。
 
 **一句话:** 演示项目——resources 资源管理 API(从 OpenAPI info.description 提取)。
+
+## 本章导学
+
+<!-- manual:syllabus -->
+- **本章你将学到:** resources 资源管理 API 的 ${endpointCount} 个端点怎么调用——从第一次成功调用到按错误码排错。
+- **前置章节:** 无——本章是全书第一章,从零开始。
+- **读法:** 只想查用 → 直接进 [§三 使用说明](#三使用说明);赶时间 → 先读章末"本章小结"。
+<!-- /manual:syllabus -->
 
 ## 一、这个功能是什么
 
@@ -323,6 +332,23 @@ ${schemaTable}
 按错误码排查(完整错误模型以 \`openapi.yaml\` 为准):
 
 ${errorTable}
+
+---
+
+## 本章小结
+
+<!-- manual:summary -->
+- 本章交付了 ${endpointCount} 个端点、${eventCount} 个事件:resources 资源的增删查改。
+- 快速入口在 [§二 快速上手](#二快速上手);调用出错查 [§五 故障排查](#五故障排查)。
+- 开发过程与验证证据见 [附录 A](#附录-a--交付与开发留档)。
+<!-- /manual:summary -->
+
+## 下一章
+
+<!-- manual:next -->
+- 学完本章,建议继续:等待下一次交付后追加的功能章(见首页目录)。
+- 想先动手?回到 [§二 快速上手](#二快速上手) 把示例跑一遍。
+<!-- /manual:next -->
 
 ---
 
@@ -399,46 +425,45 @@ ok(`渲染章节文件:${chapterPath}`);
 
 // === 步骤 5:渲染索引 ===
 
-const indexContent = `# 演示项目 · 项目说明书
+const indexContent = `# 演示项目 · 项目书
 
 > **resources 资源管理 API 演示项目。**
 >
-> 本页由器灵 chapter-render.mjs 渲染。章节 = 说明书分册。
+> 本页是全书的**前言与目录**。全书按"先跑起来,再逐功能深入"的顺序组织。
 
-## 快速上手
+## 前言
 
-1. **认证:** 获取 Bearer Token
-2. **第一个调用:** 见 [chapter-01 · §二 快速上手](./chapter-01-demo.md#二快速上手)
+- **这本书讲什么:** resources 资源管理 API 的能力与用法。
+- **适合谁:** 新接手的开发者(按顺序读)/ 只想查用的调用方(直接进章节 §三)。
+- **快速上手:** 获取 Bearer Token,第一个调用见 [第 1 章 · §二](./chapter-01-demo.md#二快速上手)。
 
-## 功能与章节地图
+## 目录
 
-| 章节 | 覆盖什么 | 状态 | 上手入口 |
-|------|----------|------|----------|
-| [chapter-01](./chapter-01-demo.md) | resources 资源管理 API | shipped | [§二 快速上手](./chapter-01-demo.md#二快速上手) |
+**第一篇 · 演示功能**
+
+- [第 01 章 · 演示项目](./chapter-01-demo.md)
 
 ---
 
-## 参考汇总(全章节累积)
+## 参考汇总(全书附表)
 
 | 维度 | 数量 | 明细位置 |
 |------|------|----------|
 | API 端点(合计) | ${endpointCount} | 各章节 §三 使用说明 |
 | 事件(合计) | ${eventCount} | 同上 |
 
-## 如何阅读(按角色 × 意图)
+## 术语表
 
-| 你想做什么 | 去哪里看 |
-|------------|----------|
-| 查某个 API 怎么用 | 对应章节 §三 使用说明 |
-| 调用报错了 | 对应章节 §五 故障排查 |
-| 知道某次交付改了什么 | 对应章节 附录 B |
+| 术语 | 含义 | 首见章节 |
+|------|------|----------|
+| | | |
 
-## 关于本文档
+## 关于本书
 
 <details>
 <summary>生成方式、版本与严谨性约定(点开展开)</summary>
 
-- **生成:** 器灵工作流 v0.17.0;正文五章 = 说明书,附录三章 = 留档与审计;测试覆盖率 ${testCoverage}%(${testCases} 用例)。
+- **生成:** 器灵工作流 v0.18.0;章节 = 本章导学 → 正文五章 → 本章小结/下一章 → 附录三章;篇由 frontmatter \`part\` 声明;测试覆盖率 ${testCoverage}%(${testCases} 用例)。
 
 </details>
 `;
@@ -504,15 +529,15 @@ if (placeholders.length === 0) {
   err(`断言 7:章节文档含未替换占位符: ${[...new Set(placeholders)].join(', ')}`);
 }
 
-// 断言 8:说明书骨架完整(正文五章 + 附录三章)且 manual 保护块配对
+// 断言 8:书本骨架完整(导学 + 正文五章 + 小结 + 附录三章)且 manual 保护块配对
 const manualOpen = (chapter.match(/<!-- manual:[a-zA-Z0-9_-]+ -->/g) || []).length;
 const manualClose = (chapter.match(/<!-- \/manual:[a-zA-Z0-9_-]+ -->/g) || []).length;
-const skeletonSections = ['一、这个功能是什么', '二、快速上手', '三、使用说明', '四、配置与限制', '五、故障排查', '附录 A', '附录 B', '附录 C'];
+const skeletonSections = ['本章导学', '一、这个功能是什么', '二、快速上手', '三、使用说明', '四、配置与限制', '五、故障排查', '本章小结', '附录 A', '附录 B', '附录 C'];
 const missingSections = skeletonSections.filter(s => !chapter.includes(s));
-if (missingSections.length === 0 && manualOpen === manualClose && manualOpen >= 2) {
-  ok(`断言 8:说明书骨架完整(正文五章 + 附录三章,manual 块 ${manualOpen} 对)`);
+if (missingSections.length === 0 && manualOpen === manualClose && manualOpen >= 4) {
+  ok(`断言 8:书本骨架完整(导学/正文五章/小结/附录三章,manual 块 ${manualOpen} 对)`);
 } else {
-  err(`断言 8:说明书骨架不完整或缺 manual 块(缺失节: ${missingSections.join(', ') || '无'};manual 开 ${manualOpen} / 闭 ${manualClose})`);
+  err(`断言 8:书本骨架不完整或缺 manual 块(缺失节: ${missingSections.join(', ') || '无'};manual 开 ${manualOpen} / 闭 ${manualClose})`);
 }
 
 // === 总结 ===

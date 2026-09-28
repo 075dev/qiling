@@ -542,9 +542,37 @@ const notDetectedTable = notDetected.length
   ? `| 项 | 状态 | 原因 | 建议 |\n|----|------|------|------|\n${notDetected.map(n => `| ${n.item} | 未检出(Not detected) | ${n.why} | ${n.advice} |`).join('\n')}`
   : '扫描项全部检出,无未检出项。';
 
+// 教学外壳:导学 / 小结 / 下一章(教科书惯例;全部用真实检出值,人工可润色)
+const learnLine = [
+  scripts.length ? `${scripts.length} 个 npm 命令` : null,
+  routes.length ? `${routes.length} 条 HTTP 路由` : null,
+  events.length ? `${events.length} 个事件` : null,
+  commands.length ? `${commands.length} 处命令/工具注册` : null,
+].filter(Boolean).join('、') || '本扫描未检出可自动提取的能力(见附录 C)';
+
+const syllabusBody = [
+  `- **本章你将学到:** ${PROJECT_NAME} 的 ${learnLine}怎么用——从把项目跑起来,到按证据核对每一项能力。`,
+  '- **前置章节:** 无——本章是全书第一章,从零开始。',
+  '- **读法:** 只想查用 → 直接进 [§三 使用说明](#三使用说明);完整了解 → 按顺序读;赶时间 → 先读章末"本章小结"再回看正文(教科书惯例)。',
+].join('\n');
+
+const summaryBody = [
+  `- 本章认识了 ${PROJECT_NAME}:${learnLine}。`,
+  bootDetected
+    ? `- 项目能用 \`npm run ${startScripts[0][0]}\` 跑起来(入口 \`${entryField}\`)。`
+    : '- 启动链路未自动检出,排查方式见 §五 与附录 C。',
+  `- 完整能力清单与证据在 [§三](#三使用说明);配置与限制在 [§四](#四配置与限制)。`,
+].join('\n');
+
+const nextBody = [
+  '- 全书目前只有这一章(起步);每次 `/ql-deliver` 交付后会追加新的功能章,并归入目录中的篇(见首页目录)。',
+  '- 想先动手?回到 [§二 快速上手](#二快速上手) 把命令跑一遍。',
+].join('\n');
+
 chapterContent = `---
 chapter_id: "${CHAPTER_ID}"
 title: "${PROJECT_NAME}"
+part: "第一篇 · 认识项目"
 phase: init
 generated_at: "${NOW}"
 generated_by: "器灵工作流 v${QL_VERSION} / ql-scan"
@@ -561,12 +589,20 @@ endpoints: ${routes.length}
 events: ${events.length}
 ---
 
-# 第 ${CHAPTER_ID.replace('chapter-', '')} 章 · ${PROJECT_NAME}(起步说明书)
+# 第 01 章 · ${PROJECT_NAME}(起步)
 
-> 本章节是项目的**起步说明书**,由 \`/ql-scan\` 阅读代码自动生成。
-> §一/§二 中 \`<!-- manual -->\` 块内的内容欢迎人工撰写润色(重扫自动保留);其余机器节不要手改——项目结构变化后用 \`/ql-scan --force\` 重扫覆盖。
+> 本章是全书的**第一章**:认识并跑起来。由 \`/ql-scan\` 阅读代码自动生成。
+> \`<!-- manual -->\` 块内的内容欢迎人工撰写润色(重扫自动保留);其余机器节不要手改——项目结构变化后用 \`/ql-scan --force\` 重扫覆盖。
 
 **一句话:** ${PROJECT_DESC || `${PROJECT_NAME}${pkg ? '(Node.js 生态项目)' : ''},能力清单见 [§一](#一这个功能是什么)`}
+
+## 本章导学
+
+<!-- manual:syllabus -->
+${syllabusBody}
+
+(以上为生成器初稿;欢迎人工改写学习目标与前置章节)
+<!-- /manual:syllabus -->
 
 ## 一、这个功能是什么
 
@@ -602,6 +638,24 @@ ${sec42}
 ## 五、故障排查
 
 ${troubleShooting}
+
+---
+
+## 本章小结
+
+<!-- manual:summary -->
+${summaryBody}
+
+(以上为生成器初稿;欢迎人工改写要点回顾)
+<!-- /manual:summary -->
+
+## 下一章
+
+<!-- manual:next -->
+${nextBody}
+
+(以上为生成器初稿;欢迎人工按学习路径指定下一章——不必等于交付顺序)
+<!-- /manual:next -->
 
 ---
 
@@ -712,6 +766,7 @@ const chapterMetas = allChapters.map(f => {
     id: (fm(content, 'chapter_id') || (f.match(/chapter-\d+/) || [f])[0]),
     file: f,
     title: fm(content, 'title') || '未命名',
+    part: fm(content, 'part') || '未分篇',
     status: fm(content, 'status') || 'unknown',
     generated: (fm(content, 'generated_at') || '').slice(0, 10),
     endpoints: fm(content, 'endpoints'),
@@ -721,6 +776,22 @@ const chapterMetas = allChapters.map(f => {
   };
 });
 
+// 目录:按篇(part)分组、按章号排序——书本式树状目录
+const partOrder = [];
+const byPart = {};
+for (const c of chapterMetas) {
+  if (!byPart[c.part]) { byPart[c.part] = []; partOrder.push(c.part); }
+  byPart[c.part].push(c);
+}
+const tocText = partOrder.map(p => {
+  const rows = byPart[p].map(c => {
+    const chLabel = `${c.id.replace('chapter-', '第 ')} 章`;
+    const suffix = c.source === '/ql-scan' ? '(起步)' : '';
+    return `- [${chLabel} · ${c.title}${suffix}](./chapters/${c.file})`;
+  }).join('\n');
+  return `**${p}**\n\n${rows}`;
+}).join('\n\n');
+
 const totalEndpoints = chapterMetas.reduce((a, c) => a + (parseInt(c.endpoints) || 0), 0);
 const totalEvents = chapterMetas.reduce((a, c) => a + (parseInt(c.events) || 0), 0);
 const pkgVersion = pkg && pkg.version ? pkg.version : '0.0.0';
@@ -728,36 +799,29 @@ const pkgVersion = pkg && pkg.version ? pkg.version : '0.0.0';
 const newestScan = chapterMetas.filter(c => c.source === '/ql-scan')[0];
 const scanChapterFile = newestScan ? newestScan.file : null;
 
-// 首页快速上手(真实检出命令;检不出指向起步章节)
+// 首页快速上手(真实检出命令;检不出指向第一章)
 const qsInstall = PKG_MANAGER in { npm: 1, pnpm: 1, yarn: 1 }
   ? `\`${ { npm: 'npm install', pnpm: 'pnpm install', yarn: 'yarn install' }[PKG_MANAGER] }\``
-  : '安装方式见起步章节 §二';
-const qsRun = bootDetected ? `\`npm run ${startScripts[0][0]}\`` : '启动方式见起步章节 §二';
+  : '安装方式见第一章 §二';
+const qsRun = bootDetected ? `\`npm run ${startScripts[0][0]}\`` : '启动方式见第一章 §二';
 
-// 功能与章节地图行(覆盖什么:scan 章节 = 项目整体;doc 章节 = 章节标题)
-const mapRows = chapterMetas.map(c => {
-  const what = c.source === '/ql-scan' ? '项目整体(起步:能力总览与上手)' : c.title;
-  return `| [${c.id}](./chapters/${c.file}) | ${what} | ${c.status} | [§二 快速上手](./chapters/${c.file}#二快速上手) |`;
-}).join('\n');
+const indexContent = `# ${PROJECT_NAME} · 项目书
+${PROJECT_DESC ? `\n> **${PROJECT_DESC}**\n>\n> ` : '\n> '}本页是全书的**前言与目录**。全书按"先跑起来,再逐功能深入"的顺序组织:每章有导学(学什么)、正文(怎么用)、小结(回顾什么)。
 
-const indexContent = `# ${PROJECT_NAME} · 项目说明书
-${PROJECT_DESC ? `\n> **${PROJECT_DESC}**\n>\n> ` : '\n> '}本页由器灵工作流自动维护。章节 = 说明书分册:\`/ql-scan\` 产出起步册,\`/ql-doc\` 在每次交付后追加功能册(正文五章面向使用者,附录三章是留档与审计)。
+## 前言
 
-## 快速上手
+- **这本书讲什么:** ${PROJECT_DESC || `${PROJECT_NAME} 的能力与用法,从第一章"跑起来"开始,随交付逐章深入。`}
+- **适合谁:** 新接手的开发者(按目录顺序读)/ 只想查用的调用方(直接进章节 §三 使用说明)/ 维护者(看各章附录 A)。
+- **怎么读:** 按下方目录顺序学习;每章开头"本章导学"标了前置章节与读法,章末"本章小结"可先读再回看正文。
+- **快速上手:** 1. 安装 ${qsInstall} 2. 运行 ${qsRun} 3. 详细步骤见 ${scanChapterFile ? `[第一章 §二](./chapters/${scanChapterFile}#二快速上手)` : '(第一章生成后提供)'}
 
-1. **安装:** ${qsInstall}
-2. **运行:** ${qsRun}
-3. **详细上手:** ${scanChapterFile ? `[起步章节 · §二 快速上手](./chapters/${scanChapterFile}#二快速上手)` : '(尚未生成起步章节,运行 /ql-scan)'}
+## 目录
 
-## 功能与章节地图
-
-| 章节 | 覆盖什么 | 状态 | 上手入口 |
-|------|----------|------|----------|
-${mapRows || '|(暂无章节)| | | |'}
+${tocText || '(暂无章节)'}
 
 ---
 
-## 参考汇总(全章节累积)
+## 参考汇总(全书附表)
 
 | 维度 | 数量 | 明细位置 |
 |------|------|----------|
@@ -782,26 +846,23 @@ ${mapRows || '|(暂无章节)| | | |'}
 |--------|------|--------|------|
 | | | | |
 
-## 如何阅读(按角色 × 意图)
+## 术语表
 
-| 你想做什么 | 去哪里看 |
-|------------|----------|
-| 快速了解项目是什么、能做什么 | 本页定位 + 起步章节 §一 |
-| 把项目跑起来 | 起步章节 §二 快速上手 |
-| 查某个 API / 命令怎么用 | 对应章节 §三 使用说明 |
-| 调用报错了 | 对应章节 §五 故障排查 |
-| 知道某次交付改了什么、怎么迁移 | 对应章节 附录 B |
-| 给项目加新功能,代码放哪 | 起步章节 附录 A + \`/ql-design\` |
+| 术语 | 含义 | 首见章节 |
+|------|------|----------|
+| | | |
 
-## 关于本文档
+(机器不臆造术语;由 /ql-doc 章节累积或人工补充)
+
+## 关于本书
 
 <details>
 <summary>生成方式、版本、新鲜度与严谨性约定(点开展开)</summary>
 
-- **生成:** 器灵工作流 v${QL_VERSION};\`/ql-scan\`(项目初始化)+ \`/ql-doc\`(构建交付后)共同维护,本页**不要手改**。
-- **章节结构:** 正文五章 = 说明书(是什么 / 快速上手 / 使用说明 / 配置与限制 / 故障排查);附录三章 = 留档与审计(交付留档 / 章节对比 / 数据来源与验证)。
+- **生成:** 器灵工作流 v${QL_VERSION};\`/ql-scan\`(第一章)+ \`/ql-doc\`(交付后逐章追加)共同维护,本页**不要手改**。
+- **章节结构:** 本章导学 → 正文五章(是什么/快速上手/使用说明/配置与限制/故障排查)→ 本章小结/下一章 → 附录三章(交付留档/章节对比/数据来源与验证);篇由各章 frontmatter \`part\` 声明。
 - **人工撰写:** 章节内 \`<!-- manual:ID -->\` 块可人工撰写润色,重新生成时自动保留。
-- **项目元信息:** 项目名 ${PROJECT_NAME} · 版本 ${pkgVersion} · 总章节数 ${chapterMetas.length} · 包管理器 ${PKG_MANAGER} · 文档基线 commit ${newestScan && newestScan.commit ? newestScan.commit.slice(0, 8) + '(scan 章节)' : '(未打点)'}
+- **项目元信息:** 项目名 ${PROJECT_NAME} · 版本 ${pkgVersion} · 总章节数 ${chapterMetas.length} · 包管理器 ${PKG_MANAGER} · 文档基线 commit ${newestScan && newestScan.commit ? newestScan.commit.slice(0, 8) + '(第一章)' : '(未打点)'}
 - **新鲜度自查:** \`git log --oneline <基线>..HEAD\` 条目较多说明代码已演进、文档可能过期;项目结构大改后运行 \`/ql-scan --force\` 重扫。
 - **严谨性约定:** ①证据锚点——能力条目附 \`文件:行号\`,API 以 \`openapi.yaml\` 为单一可信源 ②未检出显式声明——扫不到写"未检出(Not detected)"+原因,绝不编造 ③推断必须标注"(推断)" ④不画假图——mermaid 只用真实检测值 ⑤密钥扫描——产出不含敏感值。
 
@@ -860,11 +921,11 @@ if (!UPDATE_INDEX_ONLY) {
     err(`断言 5:索引文件缺 ${CHAPTER_ID} 链接`);
   }
 
-  // 断言 6:说明书骨架完整(正文五章 + 附录三章,与 ql-doc 模板同构)
-  const sections = ['一、这个功能是什么', '二、快速上手', '三、使用说明', '四、配置与限制', '五、故障排查', '附录 A', '附录 B', '附录 C'];
+  // 断言 6:书本骨架完整(导学 + 正文五章 + 小结 + 附录三章,与 ql-doc 模板同构)
+  const sections = ['本章导学', '一、这个功能是什么', '二、快速上手', '三、使用说明', '四、配置与限制', '五、故障排查', '本章小结', '附录 A', '附录 B', '附录 C'];
   const missing = sections.filter(s => !writtenChapter.includes(s));
   if (missing.length === 0) {
-    ok('断言 6:说明书骨架完整(正文五章 + 附录三章,与 ql-doc 一致)');
+    ok('断言 6:书本骨架完整(导学/正文五章/小结/附录三章,与 ql-doc 一致)');
   } else {
     err(`断言 6:缺失节 ${missing.join(', ')}`);
   }
@@ -904,13 +965,13 @@ if (!UPDATE_INDEX_ONLY) {
     err('断言 10:版本号未正确从 package.json 读取');
   }
 
-  // 断言 11:manual 保护块标记配对完整(防止人工保护区标记损坏导致下次重扫丢内容)
+  // 断言 11:manual 保护块标记配对完整(syllabus/overview/quickstart/summary/next 五处人工保护区)
   const openTags = (writtenChapter.match(/<!-- manual:[a-zA-Z0-9_-]+ -->/g) || []).length;
   const closeTags = (writtenChapter.match(/<!-- \/manual:[a-zA-Z0-9_-]+ -->/g) || []).length;
-  if (openTags === closeTags && openTags >= 2) {
-    ok(`断言 11:manual 保护块配对完整(${openTags} 对:overview / quickstart)`);
+  if (openTags === closeTags && openTags >= 4) {
+    ok(`断言 11:manual 保护块配对完整(${openTags} 对:syllabus / overview / quickstart / summary / next)`);
   } else {
-    err(`断言 11:manual 保护块标记不配对(开 ${openTags} / 闭 ${closeTags},至少应有 2 对)`);
+    err(`断言 11:manual 保护块标记不配对(开 ${openTags} / 闭 ${closeTags},至少应有 4 对)`);
   }
 }
 

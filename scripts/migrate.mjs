@@ -138,11 +138,12 @@ const MIGRATIONS = [
   {
     id: 'M5-docs-manual-restructure-note',
     since: '0.17.0',
-    // 提示类规则:0.17.0 文档树改为说明书式结构(正文五章 + 附录三章 + manual 人工保护区)
+    // 提示类规则:0.17.0 起文档树多轮结构化(0.17 说明书式、0.18 教科书式),旧结构提示重扫
     reportOnly: true,
     detect: (ctx) => ctx.docsIndex !== null
-      && (/文档树(产品说明书)/.test(ctx.docsIndex) || /^## 章节列表/m.test(ctx.docsIndex)),
-    plan: (ctx) => '文档树为 0.17.0 前格式(目录树/章节列表):建议跑 /ql-scan --force 重扫为说明书式结构(章节内 manual 人工块会自动保留)',
+      && ((/文档树(产品说明书)/.test(ctx.docsIndex) || /^## 章节列表/m.test(ctx.docsIndex))
+        || (/项目说明书/.test(ctx.docsIndex) && !/^## 目录/m.test(ctx.docsIndex))),
+    plan: (ctx) => '文档树为旧版格式(目录树/章节列表/说明书首页):建议跑 /ql-scan --force 重扫为最新教科书式项目书(章节内 manual 人工块会自动保留)',
     apply: () => {} // 只报告,不改
   }
 ];
