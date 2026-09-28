@@ -5,6 +5,18 @@
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.18.1] - 2026-09-28
+
+### 修复:点开头的 AI 工具状态目录吃光目录树截断额度,子目录 MD 全部不可见
+
+**现象:** VSCodeUEHelper 项目 `/ql-scan` 后,目录树前 80 项被 `.omc/`、`.serena/`、`.specify/`、`.vscode-test/` 等工具状态目录灌满,`doc/*.md`、`src/AGENTS.md` 等真实项目内容全部被挤出截断线(观感:"无法索引子目录中的 MD 文件");且 11 条断言仍全绿,缺陷静默。
+
+**根因:** `walk()` 只按 `IGNORE_DIRS` 黑名单过滤,点开头的工具/环境状态目录不在清单,字母序又排在最前——黑名单枚举不完备是结构问题。
+
+**修复(最小):** 点开头目录**默认忽略**,白名单保留项目配置目录(`.github`/`.gitlab`/`.circleci`/`.vscode`);`.vscode-test`(测试沙箱生成物)加入 `IGNORE_DIRS` 黑名单。任何现在与未来的工具状态目录(`.omc`/`.serena`/`.claude`/`.cursor` 等)不再进项目结构树。
+
+**验证:** fixture(90 个工具状态文件)修复前目录树 grep 项目内容计数 0 → 修复后 4 且工具目录 0;VSCodeUEHelper 真实重扫 scanned_entries 955 → 330,子目录 MD 全部可见;本仓库全套自检全绿(docsmap 11 断言 / chapter:render 10/10 / verify:flow 20/20 / migrate:test 17/17 / validate 0 错误)。详见 `.planning/bugfix/001-dot-dirs-swallow-tree-budget.md`。
+
 ## [0.18.0] - 2026-09-27
 
 ### 项目书教科书化:导学/小结教学外壳 + 前言/分篇目录/术语表

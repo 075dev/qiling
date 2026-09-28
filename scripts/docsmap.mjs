@@ -98,8 +98,12 @@ let PROJECT_NAME = opts['project-name'] || (pkg && pkg.name) || basename(ROOT);
 const PROJECT_DESC = (pkg && pkg.description) || '';
 
 // === 常量:忽略清单 / 目录职责词典 / 框架词典(标注推断用) ===
-const IGNORE_DIRS = new Set(['node_modules', 'dist', 'build', '.git', '.qiling', '.planning', 'coverage', 'out', '.turbo', '.next', '.cache', '.tmp', 'vendor', 'target']);
+const IGNORE_DIRS = new Set(['node_modules', 'dist', 'build', '.git', '.qiling', '.planning', 'coverage', 'out', '.turbo', '.next', '.cache', '.tmp', 'vendor', 'target', '.vscode-test']);
 const IGNORE_FILES = new Set(['.DS_Store', 'Thumbs.db', 'package-lock.json', 'pnpm-lock.yaml', 'yarn.lock']);
+// 点开头目录默认是 AI 工具/环境状态(.omc/.serena/.specify/.claude/.cursor 等)——
+// 它们会把 80 项截断额度吃光,把 doc/、src/ 等真实项目内容挤出目录树(bugfix:子目录 MD 无法索引)。
+// 白名单保留对读者有价值的项目配置目录。
+const DOT_DIR_WHITELIST = new Set(['.github', '.gitlab', '.circleci', '.vscode']);
 const CODE_EXTS = /\.(ts|js|tsx|jsx|mjs|cjs|py|go|java|rb|rs|php)$/;
 const MAX_TREE_ITEMS = 80;
 const MAX_DEPTH = 4;
@@ -144,6 +148,7 @@ function walk(dir, base = dir, depth = 0) {
     const p = join(dir, item);
     let s;
     try { s = statSync(p); } catch { continue; }
+    if (s.isDirectory() && item.startsWith('.') && !DOT_DIR_WHITELIST.has(item)) continue;
     const rel = relative(base, p).replace(/\\/g, '/');
     if (s.isDirectory()) {
       entries.push({ type: 'dir', path: rel, depth });
