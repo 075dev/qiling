@@ -174,6 +174,24 @@ const MIGRATIONS = [
       ctx.paths.config = join(ctx.paths.planningNew, 'config.json');
       ctx.paths.verification = join(ctx.paths.planningNew, 'build', 'verification.md');
     }
+  },
+  {
+    id: 'M7-feature-chapter-note',
+    since: '0.20.0',
+    // 提示类规则:0.20.0 起文档树为功能章节制(一章 = 一个功能单元,frontmatter feature + 演进史附录)
+    // 独立于 M5(M5 的版本门 since 0.17.0 对锚点 ≥0.17 的项目永久失效,检不出 0.18→0.20 的结构差异)
+    reportOnly: true,
+    detect: (ctx) => {
+      if (!ctx.docsIndex || !/项目书/.test(ctx.docsIndex)) return false;
+      try {
+        const dir = join(ctx.project, '.qiling', 'docs', 'chapters');
+        const files = readdirSync(dir).filter(f => /^chapter-\d+.*\.md$/.test(f));
+        if (files.length === 0) return false;
+        return !files.some(f => /^feature:/m.test(readFileSync(join(dir, f), 'utf8')));
+      } catch { return false; }
+    },
+    plan: (ctx) => '文档树为 0.20 前格式(章节无 feature 字段):建议由 /ql-doc 按功能域重组章节(一章 = 一个功能单元,正文最新态 + 附录演进史),起步章可 /ql-scan --force 重建',
+    apply: () => {} // 只报告,不改
   }
 ];
 
@@ -220,10 +238,12 @@ function detectProjectVersion(ctx) {
 function collectActions(ctx) {
   const migrations = [];
   const skips = [];
-  // 提示类规则的版本门:项目锚点已 ≥ 规则引入版本 → 视为已覆盖,不再重复提示
+  // 提示类规则的版本门:锚点**严格大于**规则引入版本 → 视为已跨过,不再提示。
+  // 锚点 == since 的窗口内持续提示( detect 自行收敛,如章节补上 feature 后 M7 不再命中)——
+  // 用 >= 会被 0.19 的"锚点自动推进"吞掉提示(真实案例:UEHelper 锚点 0.20.0 但章节无 feature)
   const covered = (rule) => rule.reportOnly
     && typeof ctx.detectedVersion === 'string'
-    && cmpVersion(ctx.detectedVersion, rule.since) >= 0;
+    && cmpVersion(ctx.detectedVersion, rule.since) > 0;
   for (const rule of MIGRATIONS) {
     if (!covered(rule) && rule.detect(ctx)) {
       migrations.push(rule);
@@ -479,6 +499,25 @@ function selfTest() {
   const r5 = runMigration(half, {});
   assert('10 半残项目(缺 config.json)警示只含 config 一项',
     r5.exitCode === 0 && r5.output.includes('config.json') && !r5.output.includes('STATE.md(状态锚点)'));
+
+  // ── 场景 6:M7 功能章节制提示(0.18 教科书式章节无 feature 字段 → 提示;有 feature → 不提示)──
+  const feat = join(base, 'feat-project');
+  mkdirSync(join(feat, '.qiling/docs/chapters'), { recursive: true });
+  mkdirSync(join(feat, '.qiling/planning'), { recursive: true });
+  writeFileSync(join(feat, '.qiling/planning', 'STATE.md'),
+    `---\nstatus: discussed\nql_version: '0.19.0'\n---\n\n# s\n`, 'utf8');
+  writeFileSync(join(feat, '.qiling/docs', 'README.md'), '# 演示项目 · 项目书\n\n## 目录\n', 'utf8');
+  writeFileSync(join(feat, '.qiling/docs/chapters/chapter-01-demo.md'),
+    '---\nchapter_id: "chapter-01"\ntitle: "演示项目"\n---\n\n# 第 01 章\n', 'utf8');
+  const r6 = runMigration(feat, {});
+  assert('11 教科书式章节(无 feature)触发功能章节制重组提示',
+    r6.exitCode === 0 && r6.output.includes('功能域重组章节'));
+  // 锚点已 ≥ 0.20 且章节带 feature → 版本门收敛,不再提示
+  writeFileSync(join(feat, '.qiling/docs/chapters/chapter-01-demo.md'),
+    '---\nchapter_id: "chapter-01"\ntitle: "演示项目"\nfeature: "demo"\n---\n\n# 第 01 章\n', 'utf8');
+  const r6b = runMigration(feat, {});
+  assert('11a 章节(有 feature)不再触发重组提示',
+    r6b.exitCode === 0 && !r6b.output.includes('功能域重组章节'));
 
   // ── 清理 ──
   rmSync(base, { recursive: true, force: true });

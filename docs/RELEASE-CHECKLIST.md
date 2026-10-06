@@ -39,7 +39,7 @@ npm run validate          # 0 错误(警告需逐条确认是预期内)
 npm run verify:flow       # 20/20
 npm run verify:schema     # 通过
 npm run chapter:render    # 10/10
-npm run migrate:test      # 17/17(迁移引擎自测)
+npm run migrate:test      # 22/22(迁移引擎自测)
 npm run docsmap           # 11 条断言全绿(文档树端到端;--force 重扫)
 ```
 
