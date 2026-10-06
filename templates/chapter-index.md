@@ -33,7 +33,7 @@
 - [第 02 章 · 用户中心](./chapters/chapter-02-*.md)
 - [第 03 章 · 订单中心](./chapters/chapter-03-*.md)
 
-(篇由各章 frontmatter `part` 声明,一篇可含多章;交付后新章由 /ql-doc 追加并归篇)
+(章 = 功能单元(frontmatter `feature`),正文永远最新态;篇由 `part` 声明,一篇可含多章;新功能由 /ql-doc 按域建章并归篇)
 
 ## 参考汇总(全书附表)
 

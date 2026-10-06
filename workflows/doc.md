@@ -83,19 +83,16 @@ CHAPTER_FILE=".qiling/docs/chapters/${CHAPTER_ID}-${SLUG}.md"
 | `git log` | A.5 Git 历史摘要 |
 | mermaid timeline(模板内嵌) | A.1 阶段时序图(只用报告真实值) |
 
-## 步骤 5: 与上一章节对比(→ 附录 B)
+## 步骤 5: 功能演进史追加(→ 附录 B)
+
+**一章 = 一个功能单元(frontmatter `feature`)**:交付触达某功能时,**更新该章正文为最新态**(manual 块保留),并在其附录 B 演进史表**顶部追加一行**(版本/日期/变更/证据)——历史只增不清。
 
 ```bash
-# 查找上一章节文件
-PREV_CHAPTER=$(ls -1 .qiling/docs/chapters/chapter-*.md 2>/dev/null | sort | tail -n 2 | head -n 1)
-
-if [ -n "$PREV_CHAPTER" ]; then
-  # diff OpenAPI:对比 path 增删
-  # diff schema:对比 schema 字段变化
-  # diff errors:对比 error 列表变化
-  echo "本章节相对 ${PREV_CHAPTER} 的 API 变更 → 附录 B"
-fi
+# 按功能域定位既有章节(无则按 /ql-doc 结构新建)
+CHAPTER=$(grep -rl "feature: \"${FEATURE_SLUG}\"" .qiling/docs/chapters/ | head -1)
 ```
+
+正文更新来源:diff OpenAPI(相对上次交付)归纳"该功能本次发生了什么",写进演进史新行;破坏性变更必须写明迁移方式。
 
 ## 步骤 6: 保留人工撰写内容,写章节文件
 
@@ -189,6 +186,6 @@ echo "📝 生成章节文档..."
 
 ## 与 discuss 的跳接点
 
-首次生成章节时,附录 B"与上一章节对比"会显示"无上一章节"——这是正常的首章节状态。
+功能首次触达时新建章节,附录 B 演进史从该功能的首次交付记起——这是正常的首条状态。
 
 </integration>
