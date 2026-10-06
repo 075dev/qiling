@@ -5,6 +5,36 @@
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.21.0] - 2026-10-06
+
+### 功能域发现与分章:扫描器按功能单元自动建章(回应"为什么只有一个章节")
+
+**背景:** 用户对 VSCodeUEHelper 跑 `/ql-doc` 后仍只有一章,指出该插件明明有编译/clangd UE 支持/clangd proxy/控制面板/MCP 等多个功能模块——"是不是没有合理的功能模块划分功能"。诊断确认:①`/ql-scan` 机制上只生成起步章;②`/ql-doc` 的功能章节制把划分留给 AI 临场判断,工作流无强制步骤与信号输入;③功能域信号(目录/命令前缀/契约 tags)一直存在但无人消费。
+
+**新能力(docsmap.mjs,断言 11 → 12 条):**
+
+- **功能域发现**(步骤 4.8),信号优先级:①`features.json` 清单声明(feature/title/part/description/include[]/exclude[],顺序即归属优先级)②源码功能目录启发式(`src/` 顶层,排除 core/utils/types/i18n 等基础设施词,标注推断)
+- **按域分章**(步骤 6.5):起步章之后每个功能域一章(`chapter-NN-<feature>.md`):该域能力入口表(带 `文件:行号` 证据)+ 归属文件清单 + 教科书骨架(manual 五处);重扫按 `feature` 定位既有章更新(manual 保留)
+- **提取器持久化**:项目根 `patterns.json` 默认读取(与 `--patterns` 等效)——项目的一次性提取配置变成可复用资产
+- **auto 段刷新**:manual 块内 `<!-- auto:BEGIN -->…<!-- auto:END -->` 是机器数据行(计数/清单),重扫随新稿刷新;块内其余人工内容原样保留——修掉"初稿数据被 manual 保护钉住过期"的隐患
+- 断言 12:功能域章存在时逐章校验(feature 字段匹配清单、≥1KB)
+
+**工作流与技能同步:** `workflows/doc.md` 新增强制**步骤 0"功能域划分(先划域再落章)"**(信号收集 → 候选用户确认 → 落章);`skills/ql-scan`、`templates/chapter.md` 同步 feature 语义。
+
+**首个真实样本:VSCodeUEHelper 六章**(用户拍板的五域划分,经 `features.json` 声明):
+
+```
+第一篇 认识项目:01 起步总览
+第二篇 构建与项目:02 UBT 构建与项目命令(27 条命令入口)
+第三篇 IntelliSense:03 clangd Proxy 代理 · 04 clangd 的 UE 支持
+第四篇 界面:05 控制面板与用户界面
+第五篇 AI 集成:06 MCP AI 工具集成(9 个 ue_* 工具)
+```
+
+37 条能力条目全部归属到域并带证据;`features.json`/`patterns.json` 落在 UEHelper 项目根(可入库复用)。
+
+**验证:** 本仓库(无清单无 src,单章模式)16 通过;UEHelper 16 通过 0 错误(断言 12 5/5 合规);全套自检全绿(docsmap 12 断言 / chapter:render 10/10 / verify:flow 20/20 / migrate:test 22/22 / validate 0 错误)。
+
 ## [0.20.1] - 2026-10-06
 
 ### 迁移引擎:M7 功能章节制提示 + 修复版本门吞提示

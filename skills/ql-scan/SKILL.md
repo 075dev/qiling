@@ -37,6 +37,8 @@ allowed-tools:
 - **章节文件**:`.qiling/docs/chapters/chapter-NN-<slug>.md`(第一章 · 起步:导学 + 正文五章 + 小结/下一章 + 附录三章,与 ql-doc 同骨架)
 - **索引文件**:`.qiling/docs/README.md`(全书门面:前言 → 目录(按篇分组)→ 参考汇总 → 术语表 → 关于本书)
 
+**功能域发现与分章(0.21.0):** **一章 = 一个功能单元**。信号优先级:①项目根 `features.json` 清单声明(feature/title/part/description/include/include 排除 exclude)②源码功能目录启发式(排除 core/utils/types/i18n 等基础设施词,标注推断)。每个域生成一章(起步章之后的 chapter-NN-<feature>.md:该域能力入口带证据 + 归属文件清单 + 教科书骨架);重扫按 feature 定位既有章更新(manual 保留,块内 <!-- auto --> 数据行刷新)。提取器持久化:项目根 `patterns.json` 默认读取(与 --patterns 等效)。
+
 **章节内容覆盖:**
 
 教学外壳(教科书惯例):

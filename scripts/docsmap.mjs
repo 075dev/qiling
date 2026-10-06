@@ -25,6 +25,10 @@
  *   --patterns <file>  —— 自定义提取器配置(JSON 数组,补内置提取器测不到的注册风格):
  *                          [{"name": "vscode 树视图", "regex": "createTreeView\\(\\s*['\"`]([^'\"`]+)", "glob": "*.ts"}]
  *                          name=表标题;regex 的第 1 个捕获组 = 条目标识;glob 可选(默认全部代码文件)
+ *   --features <file>  —— 功能域清单(JSON 数组,一章 = 一个功能单元):
+ *                          [{"feature": "build", "title": "UBT 构建", "part": "第二篇", "description": "...",
+ *                            "include": ["src/build/**"], "exclude": ["src/build/tmp/**"]}]
+ *                          默认读 <scan-path>/features.json;无清单时用源码功能目录启发式(标注推断)
  *
  * 输出:
  *   - .qiling/docs/chapters/chapter-NN-*.md(说明书式章节:正文五章 + 附录三章,与 ql-doc 同骨架)
@@ -302,8 +306,9 @@ const commands = extractCommands();
 
 // === 步骤 4.6:自定义提取器(--patterns,补内置提取器测不到的注册风格) ===
 let customExtractors = [];
-if (opts.patterns) {
-  const patternsPath = toAbsDir(opts.patterns);
+// 提取器来源:--patterns 显式指定 > 项目根 patterns.json(与 features.json 同约定,持久化项目的注册风格)
+const patternsPath = opts.patterns ? toAbsDir(opts.patterns) : join(SCAN_PATH, 'patterns.json');
+if (existsSync(patternsPath) || opts.patterns) {
   try {
     const raw = JSON.parse(readFileSync(patternsPath, 'utf8'));
     if (!Array.isArray(raw)) throw new Error('顶层必须是 JSON 数组');
@@ -348,6 +353,91 @@ function extractCustom() {
 }
 const customHits = extractCustom();
 const customTotal = customHits.reduce((a, h) => a + h.rows.length, 0);
+
+// === 步骤 4.8:功能域发现(0.21.0 功能章节制落地) ===
+// 信号优先级:①features.json 清单声明(最准) ②启发式(源码功能目录,排除基础设施词,标注推断)。
+// 每个域:{ feature, title, part, description(可空=推断), include[](glob), exclude[], files[], entries[] }
+const INFRA_DIRS = new Set(['core', 'utils', 'util', 'types', 'shared', 'common', 'helpers', 'config', 'constants', 'typings', 'i18n', 'index']);
+const FEATURE_MANIFEST = 'features.json';
+
+function globToRegExp(pattern) {
+  const esc = pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*\*/g, '\u0000').replace(/\*/g, '[^/]*').replace(/\u0000/g, '.*').replace(/\?/g, '.');
+  return new RegExp(`^${esc}$`);
+}
+
+function loadFeatureDefs() {
+  const manifestPath = opts.features ? toAbsDir(opts.features) : join(SCAN_PATH, FEATURE_MANIFEST);
+  if (!existsSync(manifestPath)) return null;
+  try {
+    const raw = JSON.parse(readFileSync(manifestPath, 'utf8'));
+    if (!Array.isArray(raw) || raw.length === 0) throw new Error('顶层必须是非空 JSON 数组');
+    return raw.map((d, i) => {
+      if (!d || typeof d.feature !== 'string' || typeof d.title !== 'string') throw new Error(`第 ${i + 1} 项缺 feature 或 title 字段`);
+      if (!Array.isArray(d.include) || d.include.length === 0) throw new Error(`第 ${i + 1} 项(${d.feature})缺 include 数组`);
+      return {
+        feature: d.feature,
+        title: d.title,
+        part: d.part || '第二篇 · 功能模块',
+        description: typeof d.description === 'string' ? d.description : null,
+        include: d.include.map(globToRegExp),
+        exclude: (Array.isArray(d.exclude) ? d.exclude : []).map(globToRegExp),
+      };
+    });
+  } catch (e) {
+    console.error(`❌ ${FEATURE_MANIFEST} 加载失败: ${e.message}`);
+    process.exit(2);
+  }
+}
+const featureDefs = loadFeatureDefs();
+
+function discoverFeatures() {
+  if (featureDefs) return featureDefs;
+  // 启发式:常见源码根(src/lib/app/source)的下一级功能目录(排除基础设施词),每目录 = 一个候选域(推断)
+  const SRC_ROOTS = new Set(['src', 'lib', 'app', 'source']);
+  const topDirs = [...new Set(tree.filter(t => t.type === 'dir' && t.depth === 1).map(t => t.path.split('/')[1]))];
+  const roots = topDirs.filter(d => SRC_ROOTS.has(d));
+  if (roots.length === 0) return [];
+  const srcRoot = roots[0];
+  const domains = [...new Set(tree.filter(t => t.type === 'dir' && t.path.startsWith(`${srcRoot}/`) && t.depth === 2).map(t => t.path.split('/')[1]))]
+    .filter(d => !INFRA_DIRS.has(d));
+  return domains.map(d => ({
+    feature: d,
+    title: d,
+    part: '第二篇 · 功能模块',
+    description: null, // 启发式无描述,渲染时标注"(推断)"
+    include: [globToRegExp(`${srcRoot}/${d}/**`)],
+    exclude: [],
+    inferred: true,
+  }));
+}
+const features = discoverFeatures();
+
+// 归属:每个域收 include 匹配的文件;能力条目(路由/事件/命令/自定义)按证据文件路径归域(声明顺序即优先级)
+function matchDomain(path) {
+  for (const f of features) {
+    if (f.exclude.some(re => re.test(path))) continue;
+    if (f.include.some(re => re.test(path))) return f;
+  }
+  return null;
+}
+for (const f of features) { f.files = []; f.entries = []; }
+for (const t of tree) {
+  if (t.type !== 'file') continue;
+  const f = matchDomain(t.path);
+  if (f) f.files.push(t.path);
+}
+const allEntries = [
+  ...routes.map(r => ({ kind: 'HTTP 路由', label: `${r.method} ${r.path}`, file: r.file, line: r.line })),
+  ...events.map(e => ({ kind: '事件', label: `${e.name}(${e.verb})`, file: e.file, line: e.line })),
+  ...commands.map(c => ({ kind: c.kind, label: c.name, file: c.file, line: c.line })),
+  ...customHits.flatMap(h => h.rows.map(r => ({ kind: h.name, label: r.name, file: r.file, line: r.line }))),
+];
+for (const e of allEntries) {
+  const f = matchDomain(e.file);
+  if (f) f.entries.push(e);
+}
+const featureTotalFiles = features.reduce((a, f) => a + f.files.length, 0);
+const featureTotalEntries = features.reduce((a, f) => a + f.entries.length, 0);
 
 // === 步骤 5:命令与入口(启动链路只用真实检测值,检不出就不画图) ===
 const scripts = pkg && pkg.scripts ? Object.entries(pkg.scripts) : [];
@@ -465,10 +555,18 @@ function extractManualBlocks(text) {
   while ((m = re.exec(text)) !== null) blocks[m[1]] = m[0];
   return blocks;
 }
+// auto 段:manual 块内 <!-- auto:BEGIN -->…<!-- auto:END --> 是机器生成的数据行(计数/清单),
+// 重扫时随新稿刷新;块内其余内容(人工撰写)原样保留——数据不过期,人工不丢失
+const AUTO_RE = /<!-- auto:BEGIN -->[\s\S]*?<!-- auto:END -->/g;
+function refreshAutoSegments(preservedBlock, newBlock) {
+  const newAutos = newBlock.match(new RegExp(AUTO_RE.source, 'g')) || [];
+  let i = 0;
+  return preservedBlock.replace(new RegExp(AUTO_RE.source, 'g'), () => newAutos[i++] || '');
+}
 function preserveManual(newText, oldText) {
   if (!oldText) return newText;
   const oldBlocks = extractManualBlocks(oldText);
-  return newText.replace(new RegExp(MANUAL_RE.source, 'g'), (whole, id) => oldBlocks[id] || whole);
+  return newText.replace(new RegExp(MANUAL_RE.source, 'g'), (whole, id) => oldBlocks[id] ? refreshAutoSegments(oldBlocks[id], whole) : whole);
 }
 
 let chapterContent = '';
@@ -604,7 +702,9 @@ events: ${events.length}
 ## 本章导学
 
 <!-- manual:syllabus -->
+<!-- auto:BEGIN -->
 ${syllabusBody}
+<!-- auto:END -->
 
 (以上为生成器初稿;欢迎人工改写学习目标与前置章节)
 <!-- /manual:syllabus -->
@@ -612,7 +712,9 @@ ${syllabusBody}
 ## 一、这个功能是什么
 
 <!-- manual:overview -->
+<!-- auto:BEGIN -->
 ${overviewBody}
+<!-- auto:END -->
 
 (以上为生成器初稿;欢迎人工补充:这个项目解决什么问题、什么时候用、不适用什么场景)
 <!-- /manual:overview -->
@@ -620,7 +722,9 @@ ${overviewBody}
 ## 二、快速上手
 
 <!-- manual:quickstart -->
+<!-- auto:BEGIN -->
 ${qsLines.join('\n')}
+<!-- auto:END -->
 ${bootDiagram ? `\n${bootDiagram}\n` : ''}
 (以上为生成器初稿;欢迎人工补充第一次跑通项目的完整步骤与易踩的坑)
 <!-- /manual:quickstart -->
@@ -649,7 +753,9 @@ ${troubleShooting}
 ## 本章小结
 
 <!-- manual:summary -->
+<!-- auto:BEGIN -->
 ${summaryBody}
+<!-- auto:END -->
 
 (以上为生成器初稿;欢迎人工改写要点回顾)
 <!-- /manual:summary -->
@@ -753,6 +859,169 @@ if (!UPDATE_INDEX_ONLY) {
   scanSecrets(chapterContent, '章节文档');
   writeFileSync(CHAPTER_FILE, chapterContent);
   ok(`章节文件已生成:${CHAPTER_FILE}`);
+
+  // === 步骤 6.5:功能域章渲染与落盘(一章 = 一个功能单元;feature 定位既有章则更新,manual 保留) ===
+  function renderFeatureChapter(f, num) {
+    const id = `chapter-${String(num).padStart(2, '0')}`;
+    const descLine = f.description || `由源码目录归属归纳(feature: ${f.feature}${f.inferred ? ',启发式发现(推断)' : ',来自 features.json 声明'})`;
+    const capRows = [];
+    const byKind = {};
+    for (const e of f.entries) byKind[e.kind] = (byKind[e.kind] || 0) + 1;
+    for (const [k, n] of Object.entries(byKind)) capRows.push(`| ${k} | ${n} | [§3](#三使用说明) |`);
+    const capTable = capRows.length
+      ? `| 能力 | 数量 | 明细 |\n|------|------|------|\n${capRows.join('\n')}`
+      : null;
+    const entryTable = f.entries.length
+      ? `| 类型 | 标识 | 证据(文件:行) |\n|------|------|------------------|\n${f.entries.map(e => `| ${e.kind} | \`${e.label.replace(/\|/g, '\\|')}\` | \`${e.file}:${e.line}\` |`).join('\n')}`
+      : null;
+    const filesShown = f.files.slice(0, 40);
+    const filesTable = filesShown.length
+      ? `${filesShown.map(p => `- \`${p}\``).join('\n')}${f.files.length > filesShown.length ? `\n…(共 ${f.files.length} 个文件,已截断)` : ''}`
+      : '(该域暂无归属文件)';
+    const extCount = {};
+    for (const p of f.files) { const ext = p.split('.').pop(); if (ext) extCount[ext] = (extCount[ext] || 0) + 1; }
+    const extRows = Object.entries(extCount).sort((a, b) => b[1] - a[1]).slice(0, 6)
+      .map(([e, n]) => `| .${e} | ${n} |`).join('\n');
+    const content = `---
+chapter_id: "${id}"
+title: "${f.title}"
+feature: "${f.feature}"
+part: "${f.part}"
+generated_at: "${NOW}"
+generated_by: "器灵工作流 v${QL_VERSION} / ql-scan 功能域分章"
+ql_version: "${QL_VERSION}"
+${HEAD_COMMIT ? `last_mapped_commit: "${HEAD_COMMIT}"\n` : ''}status: "scaffold"
+endpoints: ${f.entries.filter(e => e.kind === 'HTTP 路由').length}
+events: ${f.entries.filter(e => e.kind === '事件').length}
+---
+
+# 第 ${String(num).padStart(2, '0')} 章 · ${f.title}
+
+> 本章是功能单元 **${f.feature}** 的功能章,正文永远反映**最新状态**;历史变更见附录 B 演进史。
+> \`<!-- manual -->\` 块欢迎人工撰写润色(重扫自动保留);其余机器节不要手改。
+
+**一句话:** ${descLine}
+
+## 本章导学
+
+<!-- manual:syllabus -->
+<!-- auto:BEGIN -->
+- **本章你将学到:** ${f.title}(${f.feature})的功能怎么用——${f.files.length} 个源码文件、${f.entries.length} 条能力入口(清单见 §三)。
+- **前置章节:** 第 01 章(先让项目跑起来)。
+<!-- auto:END -->
+- **读法:** 查用 → 直接进 §三;想懂设计 → 看来源与证据。
+<!-- /manual:syllabus -->
+
+## 一、这个功能是什么
+
+<!-- manual:overview -->
+<!-- auto:BEGIN -->
+${capTable ? `**覆盖能力:**\n\n| 能力 | 数量 | 明细 |\n|------|------|------|\n${capRows.join('\n')}\n\n` : '**覆盖能力:** 本章暂未检出能力条目(见附录 C)。\n\n'}**功能说明:** ${descLine}
+<!-- auto:END -->
+
+(以上为生成器初稿;欢迎人工补充:这个功能解决什么问题、什么时候用、不适用什么场景)
+<!-- /manual:overview -->
+
+## 二、快速上手
+
+<!-- manual:quickstart -->
+<!-- auto:BEGIN -->
+${f.entries.length ? `本功能的能力入口(完整清单与证据见 §三):\n\n${f.entries.slice(0, 8).map(e => `- ${e.kind}:\`${e.label}\``).join('\n')}${f.entries.length > 8 ? `\n…共 ${f.entries.length} 条` : ''}` : '本功能暂未检出直接入口;运行方式见第 01 章快速上手与项目 README。'}
+
+<!-- auto:END -->
+
+(以上为生成器初稿;欢迎人工补充第一次使用本功能的完整步骤)
+<!-- /manual:quickstart -->
+
+## 三、使用说明
+
+${entryTable ? `### 3.1 能力入口(带证据)\n\n${entryTable}\n\n` : ''}### 3.2 归属文件
+
+${filesTable}
+
+## 四、配置与限制
+
+**该域文件构成:**
+
+| 扩展名 | 文件数 |
+|--------|--------|
+${extRows || '| (无) | 0 |'}
+
+## 五、故障排查
+
+- 能力行为异常 → 先对照 §3.1 的 \`文件:行号\` 证据定位实现;文档疑似过期 → 用附录 C 的基线 commit 自查。
+- 本功能的问题在 §三 清单找不到入口 → 可能属于其他功能域,回[全书目录](../README.md#目录)查找。
+
+## 本章小结
+
+<!-- manual:summary -->
+<!-- auto:BEGIN -->
+- 本章覆盖功能单元 ${f.feature}:${f.files.length} 个文件、${f.entries.length} 条能力入口。
+<!-- auto:END -->
+- 能力证据在 §三;本功能的"为什么"与使用心得欢迎写入本块。
+<!-- /manual:summary -->
+
+## 下一章
+
+<!-- manual:next -->
+- 继续按目录顺序阅读下一章;功能之间的依赖以实际调用为准(见各章 §三 证据)。
+<!-- /manual:next -->
+
+---
+
+## 附录 A · 交付与开发留档
+
+- 功能域:${f.feature}(归属文件 ${f.files.length} 个)· 来源:${f.inferred ? '启发式发现(推断)' : 'features.json 声明'}
+
+## 附录 B · 功能演进史
+
+| 版本/交付 | 日期 | 该功能发生了什么 | 证据 |
+|-----------|------|------------------|------|
+| | | | |
+
+(本章正文永远最新态;该功能的历史变更逐条追加于此,只增不清)
+
+## 附录 C · 数据来源与验证
+
+- **来源:** 能力条目由 \`/ql-scan\` 提取器按惯例反推,每条带 \`文件:行号\`;功能域划分来自${f.inferred ? '目录结构启发式(推断)' : '`features.json` 清单声明'}。
+- **变更日志:** ${NOW} 由功能域分章初次生成(后续由 /ql-doc 随交付更新)。
+`;
+    return { id, file: join(chaptersDir, `${id}-${f.feature}.md`), content };
+  }
+
+  if (features.length > 0) {
+    // 章号分配:既有 feature 章按 feature 定位更新;新域从现有最大章号 + 1 起编
+    const allChapterFiles = readdirSync(chaptersDir).filter(x => /^chapter-\d+.*\.md$/.test(x));
+    const featureFileBySlug = {};
+    let maxNum = 0;
+    for (const x of allChapterFiles) {
+      const m = x.match(/chapter-(\d+)/);
+      if (m) maxNum = Math.max(maxNum, parseInt(m[1]));
+      try {
+        const fmFeature = readFileSync(join(chaptersDir, x), 'utf8').match(/^feature:\s*"?([a-zA-Z0-9_-]+)"?/m);
+        if (fmFeature) featureFileBySlug[fmFeature[1]] = { file: join(chaptersDir, x), id: `chapter-${m[1].padStart(2, '0')}` };
+      } catch { /* 不可读则当不存在 */ }
+    }
+    let nextNum = maxNum + 1;
+    const featureChapters = [];
+    for (const f of features) {
+      const existing = featureFileBySlug[f.feature];
+      const num = existing ? parseInt(existing.id.replace('chapter-', '')) : nextNum++;
+      const { id, file, content } = renderFeatureChapter(f, num);
+      let finalContent = content;
+      if (FORCE && existing && existsSync(file)) {
+        try {
+          finalContent = preserveManual(content, readFileSync(file, 'utf8'));
+        } catch { /* 无 manual 时按初稿 */ }
+      }
+      scanSecrets(finalContent, `功能域章 ${id}`);
+      writeFileSync(file, finalContent);
+      featureChapters.push(`${id}(${f.feature})`);
+    }
+    ok(`功能域分章:${features.length} 个域已落章(${featureChapters.join(', ')});条目归属 ${featureTotalEntries} 条 / 文件归属 ${featureTotalFiles} 个`);
+  } else {
+    ok('功能域分章:未发现功能域(无 features.json 且启发式无候选),保持单章');
+  }
 }
 
 // === 步骤 7:更新索引(.qiling/docs/README.md,与 ql-doc 共享同一格式) ===
@@ -977,6 +1246,26 @@ if (!UPDATE_INDEX_ONLY) {
     ok(`断言 11:manual 保护块配对完整(${openTags} 对:syllabus / overview / quickstart / summary / next)`);
   } else {
     err(`断言 11:manual 保护块标记不配对(开 ${openTags} / 闭 ${closeTags},至少应有 4 对)`);
+  }
+
+  // 断言 12:功能域章校验(存在时:每章含 feature frontmatter、非空、条目证据)
+  if (features.length > 0) {
+    const featFiles = readdirSync(chaptersDir).filter(f => /^chapter-\d+.*\.md$/.test(f));
+    const featChapters = featFiles.filter(f => /^feature:/m.test(readFileSync(join(chaptersDir, f), 'utf8')));
+    let featOk = true;
+    const featIssues = [];
+    for (const f of featChapters) {
+      const c = readFileSync(join(chaptersDir, f), 'utf8');
+      if (c.length < 1024) { featOk = false; featIssues.push(`${f} 过小`); }
+      if (!new RegExp(`feature: "${features.map(x => x.feature).join('|')}"`).test(c)) { featOk = false; featIssues.push(`${f} feature 不在清单`); }
+    }
+    if (featChapters.length >= features.length && featOk) {
+      ok(`断言 12:功能域章 ${featChapters.length}/${features.length} 个全部合规(≥1KB,feature 字段匹配清单)`);
+    } else {
+      err(`断言 12:功能域章不合规(${featIssues.join('; ') || `章数 ${featChapters.length} < 域数 ${features.length}`})`);
+    }
+  } else {
+    ok('断言 12:无功能域清单,跳过功能域章校验(单章模式)');
   }
 }
 

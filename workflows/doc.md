@@ -19,6 +19,16 @@ consumes: openapi.yaml, event-flow.md, build/skeleton-report.md, build/fill-repo
 
 <process>
 
+## 步骤 0: 功能域划分(先划域,再落章——强制)
+
+**一章 = 一个功能单元**。交付触达的内容必须先归属功能域,再定位/新建章节:
+
+1. **信号收集**(按优先级):①项目根 `features.json` 清单声明 ②契约 tags ③源码功能目录(`src/` 顶层,排除 core/utils/types/i18n 等基础设施词)④命令名前缀聚类
+2. **候选 → 用户确认**:候选划分与既有章节不一致或粒度有歧义时,`AskUserQuestion` 让用户确认(过粗/过细在此调整)
+3. **落章**:每域一章(frontmatter `feature` slug + `part` 归篇);更新触达域的章正文为最新态 + 演进史追加
+
+(扫描引擎的对应实现:`scripts/docsmap.mjs` 的 `--features` /`features.json` 清单与源码目录启发式。)
+
 ## 步骤 1: 准备目录与读取上下文
 
 ```bash
