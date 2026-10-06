@@ -301,10 +301,10 @@ function runMigration(projectDir, { dryRun = false, checkOnly = false } = {}) {
       return { exitCode: 0, output: lines.join('\n') };
     }
     lines.push(`✅ 无需迁移(项目 ${detected.version || '(无锚点)'} → ${targetVersion},全部规则已满足)。`);
-    // 顺手把缺失的锚点补上,下次精确判断
-    if (detected.version === null && ctx.state !== null && !dryRun) {
+    // 留锚点纪律:锚点缺失或滞后(工件已达标但执行引擎版本更旧)都推进到目标版本,下次精确比较
+    if (ctx.state !== null && !dryRun && parseFrontmatter(ctx.state.raw).ql_version !== targetVersion) {
       writeFileSync(ctx.paths.state, upsertFrontmatter(ctx.state.raw, 'ql_version', targetVersion), 'utf8');
-      lines.push(`已补写 STATE.md 版本锚点 ql_version: '${targetVersion}'。`);
+      lines.push(`STATE.md 版本锚点已推进 → ql_version: '${targetVersion}'。`);
     }
     return { exitCode: 0, output: lines.join('\n') };
   }
