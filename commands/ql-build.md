@@ -53,11 +53,11 @@ requires: [ql-deliver]
 
 **产出:**
 - 实际代码
-- `.planning/build/skeleton-report.md`
-- `.planning/build/fill-report.md`
-- `.planning/build/verification.md`
-- `.planning/build/review.md`
-- `.planning/build/waves/<wave-id>-<task>.md`(每个 worker 一份)
+- `.qiling/planning/build/skeleton-report.md`
+- `.qiling/planning/build/fill-report.md`
+- `.qiling/planning/build/verification.md`
+- `.qiling/planning/build/review.md`
+- `.qiling/planning/build/waves/<wave-id>-<task>.md`(每个 worker 一份)
 
 **下一步:** `/ql-deliver`
 </objective>

@@ -68,14 +68,14 @@ color: purple
 
 ```bash
 # 通用加载
-cat .planning/context/openapi.yaml
-cat .planning/context/event-flow.md
-cat .planning/config.json
-test -f .planning/context/decisions.md && cat .planning/context/decisions.md   # 决策轨迹:存在才读
+cat .qiling/planning/context/openapi.yaml
+cat .qiling/planning/context/event-flow.md
+cat .qiling/planning/config.json
+test -f .qiling/planning/context/decisions.md && cat .qiling/planning/context/decisions.md   # 决策轨迹:存在才读
 
 # 阶段特定
-test -f .planning/build/skeleton-report.md && cat .planning/build/skeleton-report.md
-test -f .planning/build/fill-report.md && cat .planning/build/fill-report.md
+test -f .qiling/planning/build/skeleton-report.md && cat .qiling/planning/build/skeleton-report.md
+test -f .qiling/planning/build/fill-report.md && cat .qiling/planning/build/fill-report.md
 ```
 
 **识别实现基线(任务卡会声明,缺省 greenfield):**
@@ -201,7 +201,7 @@ Agent(
 输入:
   - 工作目录:[worktree_path]
   - 分支:[branch]
-  - OpenAPI 契约:.planning/context/openapi.yaml
+  - OpenAPI 契约:.qiling/planning/context/openapi.yaml
   - 相关 schema:User, Order (从依赖分析得出)
   - 相关流程图:user-created-events (从依赖分析得出)
   - 相关决策:D3(错误模型统一为 BUSINESS_ERROR,响应结构见 decisions.md)(仅相关条目,无则省略)
@@ -218,7 +218,7 @@ Interfaces:
 产出:
   - 实现代码(在 Files 边界内)
   - 测试代码
-  - .planning/build/waves/wave-${WAVE_ID}-${task}.md(单端点报告,含 DoD 检查单)
+  - .qiling/planning/build/waves/wave-${WAVE_ID}-${task}.md(单端点报告,含 DoD 检查单)
 约束:
   - 仅修改 Files 边界内的文件
   - 任务卡(本描述)为锁定契约:实现中发现任务卡有误 → 报告 failed 并说明,不得擅自改需求
@@ -270,7 +270,7 @@ ls .git/ql/worktrees/ 2>/dev/null     # 应无残留目录
 git branch --list "ql/wave-*"         # 应无残留分支
 ```
 
-**进度台账(progress ledger):** 每合并完一个 worker,向 `.planning/build/progress.md` 追加一行。每条任务带**可机器验证的验收标准**和一个**三态结果**——`PASS | FAIL | NOT_RUN`,完成 = 置 PASS,不写自由文本:
+**进度台账(progress ledger):** 每合并完一个 worker,向 `.qiling/planning/build/progress.md` 追加一行。每条任务带**可机器验证的验收标准**和一个**三态结果**——`PASS | FAIL | NOT_RUN`,完成 = 置 PASS,不写自由文本:
 
 ```
 Wave [N] [task] status:FAIL    | acceptance:"curl POST /orders → 201 且 schema 匹配" | strictness:HEAVY | reason:<一句话>
@@ -294,7 +294,7 @@ git diff --stat "$PREV_WAVE_BASE".."ql/wave-${WAVE_ID}-${task}"
 
 - 目标化检查:本波任务的验收标准 + 是否破坏上一波已验证的接口(Interfaces Consumes)
 - 发现问题当场退回对应 worker,不带进下一波——**波次间集成问题在下一波开始前解决,成本最低**
-- 结果一行记入 `.planning/build/waves/wave-${WAVE_ID}-verify.md`
+- 结果一行记入 `.qiling/planning/build/waves/wave-${WAVE_ID}-verify.md`
 
 ```bash
 # 端到端连通性验证
@@ -302,7 +302,7 @@ git diff --stat "$PREV_WAVE_BASE".."ql/wave-${WAVE_ID}-${task}"
 - curl 每个端点
 - 触发事件,验证接收
 
-# 记录到 .planning/build/waves/wave-${WAVE_ID}-verify.md
+# 记录到 .qiling/planning/build/waves/wave-${WAVE_ID}-verify.md
 ```
 
 **若失败:**
@@ -316,9 +316,9 @@ git diff --stat "$PREV_WAVE_BASE".."ql/wave-${WAVE_ID}-${task}"
 ## 步骤 9: 写最终报告
 
 写出对应阶段报告:
-- 骨架:`.planning/build/skeleton-report.md`
-- 填充:`.planning/build/fill-report.md`
-- 验证:`.planning/build/verification.md`
+- 骨架:`.qiling/planning/build/skeleton-report.md`
+- 填充:`.qiling/planning/build/fill-report.md`
+- 验证:`.qiling/planning/build/verification.md`
 
 ## 步骤 10: 返回
 

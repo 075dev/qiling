@@ -30,7 +30,7 @@ zcode plugin install .
 /ql-fix        # 修 Bug:复现 → 根因 → 最小修复 → 回归测试
 /ql-add        # 加功能:定位章节 → 补契约 → 增量构建 → 同步文档
 /ql-next       # 下一步提示:从磁盘事实推导当前位置,推荐下一步(只读零副作用)
-/ql-update     # 升级迁移:插件更新后,一键把项目工件(.planning/)迁移到新版格式
+/ql-update     # 升级迁移:插件更新后,一键把项目工件(.qiling/planning/)迁移到新版格式
 ```
 
 > 0.6 及更早的旧命令名(`/ql-docsmap`、`/ql-discuss`、`/ql-ship`、`/ql-chapter`)保留为别名,调用时会提示新名称。

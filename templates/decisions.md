@@ -1,6 +1,6 @@
 # 决策轨迹模板(Decision Trace)
 #
-# 用途:`.planning/context/decisions.md`
+# 用途:`.qiling/planning/context/decisions.md`
 # 产出时机:/ql-design 讨论中即时落痕;后续 /ql-add 补契约时追加;/ql-fix 根因判定时只读引用
 # 治理:append-only 账本。新决策追加新行;推翻旧决策 = 旧行 status 改 superseded + 新行注明"取代 D-N",禁止删改旧行
 

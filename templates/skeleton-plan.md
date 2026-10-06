@@ -1,6 +1,6 @@
 # Walking Skeleton 规划模板
 #
-# 用途:`.planning/build/skeleton-plan.md`(由 ql-builder 骨架阶段产出)
+# 用途:`.qiling/planning/build/skeleton-plan.md`(由 ql-builder 骨架阶段产出)
 #
 # 这是骨架阶段的**内部计划**——由 builder 智能体在执行前自我组织。
 # 不是给协调器看的,而是给 builder 自己记录"我要做什么"。

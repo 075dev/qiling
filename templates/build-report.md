@@ -1,6 +1,6 @@
 # 构建报告通用模板
 #
-# 用途:`.planning/build/skeleton-report.md` 与 `.planning/build/fill-report.md`
+# 用途:`.qiling/planning/build/skeleton-report.md` 与 `.qiling/planning/build/fill-report.md`
 #
 # 两个文件结构相同,内容针对不同阶段。
 
@@ -13,8 +13,8 @@
 phase: skeleton
 generated_at: [ISO timestamp]
 inputs:
-  openapi: .planning/context/openapi.yaml
-  event-flow: .planning/context/event-flow.md
+  openapi: .qiling/planning/context/openapi.yaml
+  event-flow: .qiling/planning/context/event-flow.md
 ---
 
 # Walking Skeleton 构建报告

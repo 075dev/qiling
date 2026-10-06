@@ -93,11 +93,11 @@ allowed-tools:
 
 **产出:**
 - 实际代码
-- `.planning/build/skeleton-report.md`
-- `.planning/build/fill-report.md`
-- `.planning/build/verification.md`
-- `.planning/build/review.md`
-- `.planning/build/waves/<wave-id>-<task>.md`
+- `.qiling/planning/build/skeleton-report.md`
+- `.qiling/planning/build/fill-report.md`
+- `.qiling/planning/build/verification.md`
+- `.qiling/planning/build/review.md`
+- `.qiling/planning/build/waves/<wave-id>-<task>.md`
 
 **下一步:** `/ql-deliver`
 </objective>

@@ -1,6 +1,6 @@
 # 验证报告模板
 #
-# 用途:`.planning/build/verification.md`
+# 用途:`.qiling/planning/build/verification.md`
 
 ---
 

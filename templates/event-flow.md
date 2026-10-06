@@ -1,6 +1,6 @@
 # 事件流程模板
 #
-# 用途:`.planning/context/event-flow.md`
+# 用途:`.qiling/planning/context/event-flow.md`
 #
 # 包含两个图表:
 # - sequenceDiagram:组件协作的时序

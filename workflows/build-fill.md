@@ -22,7 +22,7 @@ consumes: skeleton code, openapi.yaml, event-flow.md, decisions.md(若存在), s
 ## 步骤 1: 检查骨架就绪
 
 ```bash
-test -f .planning/build/skeleton-report.md || {
+test -f .qiling/planning/build/skeleton-report.md || {
   echo "错误: 骨架尚未构建。请先运行 /ql-build(不带 --fill-only)"
   exit 1
 }
@@ -30,7 +30,7 @@ test -f .planning/build/skeleton-report.md || {
 
 ## 步骤 2: 派发协调器(填充阶段)
 
-**先过派发决策门(同 build-skeleton 步骤 0.5):** 任务数 ≤ `inline_threshold`(默认 2)→ **内联模式**,主会话直接逐端点替换 mock 为真实实现(错误处理 + 测试 + 原子提交同 worker 标准),完成后写 `.planning/build/fill-report.md`,跳到步骤 3;否则按下方派发。
+**先过派发决策门(同 build-skeleton 步骤 0.5):** 任务数 ≤ `inline_threshold`(默认 2)→ **内联模式**,主会话直接逐端点替换 mock 为真实实现(错误处理 + 测试 + 原子提交同 worker 标准),完成后写 `.qiling/planning/build/fill-report.md`,跳到步骤 3;否则按下方派发。
 
 派发 `ql-builder-coordinator` 子智能体(全新上下文):
 
@@ -38,11 +38,11 @@ test -f .planning/build/skeleton-report.md || {
 你的任务:协调填充阶段(波次并行)
 
 输入:
-- .planning/context/openapi.yaml
-- .planning/context/event-flow.md
-- .planning/context/decisions.md(若存在)—— 决策轨迹:填充涉及契约未规定的细节(错误结构、分页、幂等)时,提取相关 D-N 条目注入 worker 任务卡,按决策精神补齐而非瞎猜
-- .planning/build/skeleton-report.md —— 骨架清单(所有端点已 mock,事件已连接)
-- .planning/config.json
+- .qiling/planning/context/openapi.yaml
+- .qiling/planning/context/event-flow.md
+- .qiling/planning/context/decisions.md(若存在)—— 决策轨迹:填充涉及契约未规定的细节(错误结构、分页、幂等)时,提取相关 D-N 条目注入 worker 任务卡,按决策精神补齐而非瞎猜
+- .qiling/planning/build/skeleton-report.md —— 骨架清单(所有端点已 mock,事件已连接)
+- .qiling/planning/config.json
 
 阶段:fill(替换 mock 为真实实现;若骨架阶段为 brownfield/spec-as-is 基线,则填充同样以存量实现为基线增量对齐)
 
@@ -70,7 +70,7 @@ worker 任务描述必须强调:
 
 ## 步骤 3: 验证填充报告
 
-主会话读 `.planning/build/fill-report.md`:
+主会话读 `.qiling/planning/build/fill-report.md`:
 
 - [ ] 所有 mock 端点已替换为真实实现?
 - [ ] 所有 mock 事件已替换为真实处理?
@@ -90,9 +90,9 @@ worker 任务描述必须强调:
 你的任务:验证阶段
 
 输入:
-- .planning/context/openapi.yaml
-- .planning/context/event-flow.md
-- .planning/build/fill-report.md
+- .qiling/planning/context/openapi.yaml
+- .qiling/planning/context/event-flow.md
+- .qiling/planning/build/fill-report.md
 
 验证项:
 1. OpenAPI 契约符合性:每个声明端点都有实现,schema 匹配,错误响应存在
@@ -107,7 +107,7 @@ worker 任务描述必须强调:
 - 已知基线失败标 PRE-EXISTING + 短标识,不算本次失败
 - 不拿 worker 报告替代命令输出
 
-产出:.planning/build/verification.md
+产出:.qiling/planning/build/verification.md
 ```
 
 ## 步骤 5: 主会话亲自复核(fresh evidence)

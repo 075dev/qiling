@@ -49,8 +49,8 @@ mkdirSync(OUT, { recursive: true });
 const openapiTpl = readFileSync(join(ROOT, 'templates/openapi-spec.yaml'), 'utf8');
 
 // 1.2 示例 build 报告(模拟 build/skeleton-report.md、build/fill-report.md、build/verification.md)
-mkdirSync(join(OUT, '.planning', 'build'), { recursive: true });
-mkdirSync(join(OUT, '.planning', 'build', 'waves'), { recursive: true });
+mkdirSync(join(OUT, '.qiling/planning', 'build'), { recursive: true });
+mkdirSync(join(OUT, '.qiling/planning', 'build', 'waves'), { recursive: true });
 
 const skeletonReport = `---
 phase: skeleton
@@ -66,7 +66,7 @@ waves_executed: 1
 事件数:1 / 1
 波次数:1
 `;
-writeFileSync(join(OUT, '.planning/build/skeleton-report.md'), skeletonReport);
+writeFileSync(join(OUT, '.qiling/planning/build/skeleton-report.md'), skeletonReport);
 
 const fillReport = `---
 phase: fill
@@ -81,7 +81,7 @@ test_cases: 18
 mock 替换率:100%
 测试覆盖:92%(18 用例)
 `;
-writeFileSync(join(OUT, '.planning/build/fill-report.md'), fillReport);
+writeFileSync(join(OUT, '.qiling/planning/build/fill-report.md'), fillReport);
 
 const verification = `---
 status: passed
@@ -97,7 +97,7 @@ inputs:
 **流程符合度:100%(1/1 事件)**
 测试:18/18 通过
 `;
-writeFileSync(join(OUT, '.planning/build/verification.md'), verification);
+writeFileSync(join(OUT, '.qiling/planning/build/verification.md'), verification);
 
 // 1.3 示例 STATE
 const state = `---
@@ -108,7 +108,7 @@ status: shipped
 # 项目状态
 阶段:1 (shipped)
 `;
-writeFileSync(join(OUT, '.planning/STATE.md'), state);
+writeFileSync(join(OUT, '.qiling/planning/STATE.md'), state);
 
 // 1.4 示例 git log(用静态字符串模拟,因为脚本不应要求真实 git 仓库)
 const gitLog = `abc1234 feat(skeleton): GET /resources 骨架  器灵 wave-1-worker-1

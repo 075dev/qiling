@@ -46,7 +46,7 @@ git log --oneline -10     # 近期在做什么
 
 勘察后只问**真正的产品决策**:端点取舍、错误语义、事件边界、状态转换。
 
-**契约已存在(再次进入讨论):** 就地编辑 `.planning/context/openapi.yaml` 与 `event-flow.md`——只改受本次讨论影响的部分,**绝不另建第二份规范文档**,不重新生成未受影响的章节。决策轨迹同理**就地追加**:本轮新产生的权衡写新行(编号延续);若与既有 D-N 冲突,走"取代 D-N"流程并同步修订契约,**不允许静默推翻**。
+**契约已存在(再次进入讨论):** 就地编辑 `.qiling/planning/context/openapi.yaml` 与 `event-flow.md`——只改受本次讨论影响的部分,**绝不另建第二份规范文档**,不重新生成未受影响的章节。决策轨迹同理**就地追加**:本轮新产生的权衡写新行(编号延续);若与既有 D-N 冲突,走"取代 D-N"流程并同步修订契约,**不允许静默推翻**。
 
 **Never-Ask 降级:** 若 `AskUserQuestion` 不可用或调用被拒(返回 Never-Ask),**仅对当前这一个决策**自决并继续:
 
@@ -60,8 +60,8 @@ git log --oneline -10     # 近期在做什么
 ## 步骤 1: 加载 STATE
 
 ```bash
-mkdir -p .planning/context .planning/build
-test -f .planning/STATE.md || cat > .planning/STATE.md <<EOF
+mkdir -p .qiling/planning/context .qiling/planning/build
+test -f .qiling/planning/STATE.md || cat > .qiling/planning/STATE.md <<EOF
 ---
 ql_state_version: '1.0'
 ql_version: '<当前器灵插件版本,从本插件 package.json 读取;无法确定时省略此行,由 /ql-update 补写>'
@@ -76,7 +76,7 @@ EOF
 
 # config.json 一步到位:缺失则从插件模板复制默认值——/ql-build 的派发决策门要读它,
 # 缺失时 inline_threshold 永远走兜底默认,用户改了配置也不生效
-test -f .planning/config.json || cp <插件目录>/templates/config.json .planning/config.json
+test -f .qiling/planning/config.json || cp <插件目录>/templates/config.json .qiling/planning/config.json
 ```
 
 读取 STATE,获取 `current_phase`(讨论阶段编号)。
@@ -92,7 +92,7 @@ test -f .planning/config.json || cp <插件目录>/templates/config.json .planni
   - 端点级约束 → openapi.yaml 对应 path 的 `description` 或 `x-ql-*` 扩展字段
   - 全局约定 → `info.description` 或 event-flow.md 约定段
   - 并在 openapi.yaml 追加 `## Clarifications` 注释段:`- Q: <问题> → A: <答案>(YYYY-MM-DD)`
-- **非显然决策即时落决策轨迹** —— 讨论中每个需要权衡的选择(端点取舍、错误模型选型、事件边界、状态机设计、schema 拆分 vs 合并),按 `@../templates/decisions.md` 立即写入 `.planning/context/decisions.md` 一行:decision / reason / alternatives / tradeoff。质量三标准:**reason 必须绑定本次讨论的具体细节**(不写"更优雅"),**alternatives 必须是真实考虑过的命名方案**(不是稻草人),**tradeoff 必须是真代价**(不是审美托词)。用户显式指令记 Clarifications、宪法已有条文、无争议实现细节——这三类**不 trace**。一轮典型 5~10 条
+- **非显然决策即时落决策轨迹** —— 讨论中每个需要权衡的选择(端点取舍、错误模型选型、事件边界、状态机设计、schema 拆分 vs 合并),按 `@../templates/decisions.md` 立即写入 `.qiling/planning/context/decisions.md` 一行:decision / reason / alternatives / tradeoff。质量三标准:**reason 必须绑定本次讨论的具体细节**(不写"更优雅"),**alternatives 必须是真实考虑过的命名方案**(不是稻草人),**tradeoff 必须是真代价**(不是审美托词)。用户显式指令记 Clarifications、宪法已有条文、无争议实现细节——这三类**不 trace**。一轮典型 5~10 条
 - 环境勘察已能回答的,直接采用并登记为"默认假设",不再问
 
 **用 `AskUserQuestion` 分轮提问。**
@@ -145,7 +145,7 @@ test -f .planning/config.json || cp <插件目录>/templates/config.json .planni
 
 ## 步骤 3: 生成 OpenAPI 3.1 契约
 
-用 `@../templates/openapi-spec.yaml` 创建 `.planning/context/openapi.yaml`:
+用 `@../templates/openapi-spec.yaml` 创建 `.qiling/planning/context/openapi.yaml`:
 
 ```yaml
 openapi: 3.1.0
@@ -191,7 +191,7 @@ components:
 
 ## 步骤 4: 生成 Mermaid 流程图
 
-用 `@../templates/event-flow.md` 创建 `.planning/context/event-flow.md`,包含:
+用 `@../templates/event-flow.md` 创建 `.qiling/planning/context/event-flow.md`,包含:
 
 ### sequenceDiagram(组件交互)
 
@@ -221,7 +221,7 @@ stateDiagram-v2
 
 ## 步骤 4.5: 项目宪法(首次可选)
 
-若 `.planning/context/constitution.md` 不存在,询问用户是否建立(推荐项:是,尤其多阶段项目):
+若 `.qiling/planning/context/constitution.md` 不存在,询问用户是否建立(推荐项:是,尤其多阶段项目):
 
 - 用 `@../templates/constitution.md` 生成:技术栈红线、分层规则、安全底线(MUST/SHOULD 分级)
 - 从本次讨论与环境勘察中提炼,每条**可判定**(能用是/否回答)
@@ -245,7 +245,7 @@ ambiguity = 1 − (目标×0.4 + 约束×0.3 + 验收×0.3) / 10
 
 - **ambiguity > 0.2 → 不冻结**,回到步骤 2 继续澄清(只问拉低评分的维度)
 - **实体收敛检查** —— 核心 schema/资源名与上一轮讨论相比是否稳定(改名算收敛,新增算抖动)?连续两轮无新增实体才允许冻结
-- **决策轨迹检查** —— `.planning/context/decisions.md` 存在且有条目。**0 条 = 可疑信号**:大概率全是默认假设在推进、没做真实权衡——回步骤 2 抽查 2~3 个"看似显然"的选择(错误模型、分页约定、幂等语义),确认它们真的是显然的而非被跳过的
+- **决策轨迹检查** —— `.qiling/planning/context/decisions.md` 存在且有条目。**0 条 = 可疑信号**:大概率全是默认假设在推进、没做真实权衡——回步骤 2 抽查 2~3 个"看似显然"的选择(错误模型、分页约定、幂等语义),确认它们真的是显然的而非被跳过的
 - **棕地检测(spec-as-is 决策)** —— 勘察或讨论中发现契约项在存量代码中已有实现(项目非从零开始)→ **必须**在 decisions.md 落一条决策:"棕地项目,契约对齐存量实现(spec-as-is),构建阶段禁止将存量实现 mock 化/重写"。没有这条决策,/ql-build 缺省按绿地"骨架=mock"推进,worker 会把存量实现当障碍物清掉
 - 冻结时在 STATE 记录评分表(Clarity Breakdown)与默认假设清单(Assumptions Exposed),供后续阶段否决
 

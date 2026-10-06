@@ -17,8 +17,8 @@ allowed-tools:
 **关闭** 讨论 → 构建 → 交付循环。
 
 **前置检查:**
-- `.planning/build/verification.md` 状态 === "passed"
-- `.planning/build/review.md` verdict === "approved" 或 "waived"(waived 必须带 waived_by + waive_reason,被豁免 critical 写入交付记录)
+- `.qiling/planning/build/verification.md` 状态 === "passed"
+- `.qiling/planning/build/review.md` verdict === "approved" 或 "waived"(waived 必须带 waived_by + waive_reason,被豁免 critical 写入交付记录)
 - 工作区干净
 - 不在主分支上
 

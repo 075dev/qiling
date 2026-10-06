@@ -29,9 +29,9 @@ requires: [ql-deliver]
 - **可以多轮讨论**——讨论 n 完成后,/ql-design n+1 进入下一阶段
 
 **产出文件:**
-- `.planning/context/openapi.yaml` —— OpenAPI 3.1 契约
-- `.planning/context/event-flow.md` —— Mermaid 流程图
-- `.planning/STATE.md` —— 更新状态
+- `.qiling/planning/context/openapi.yaml` —— OpenAPI 3.1 契约
+- `.qiling/planning/context/event-flow.md` —— Mermaid 流程图
+- `.qiling/planning/STATE.md` —— 更新状态
 
 **下一步:** `/ql-build`
 </objective>

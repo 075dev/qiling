@@ -26,12 +26,12 @@ mkdir -p .qiling/docs/chapters
 mkdir -p .qiling/docs/chapters/.diffs
 
 # 读取上下文
-test -f .planning/context/openapi.yaml || {
+test -f .qiling/planning/context/openapi.yaml || {
   echo "错误: 缺少 openapi.yaml。请先运行 /ql-design"
   exit 1
 }
 
-CURRENT_PHASE=$(grep "^current_phase:" .planning/STATE.md | awk '{print $2}')
+CURRENT_PHASE=$(grep "^current_phase:" .qiling/planning/STATE.md | awk '{print $2}')
 PR_URL=$(gh pr view --json url --jq .url 2>/dev/null || echo "")
 HEAD_COMMIT=$(git rev-parse HEAD)
 TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
@@ -44,7 +44,7 @@ TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 CHAPTER_ID=$(printf "chapter-%02d" "$CURRENT_PHASE")
 
 # 章节标题 = OpenAPI info.title
-CHAPTER_TITLE=$(yq '.info.title // "未命名项目"' .planning/context/openapi.yaml)
+CHAPTER_TITLE=$(yq '.info.title // "未命名项目"' .qiling/planning/context/openapi.yaml)
 
 # 文件名 = chapter-NN-<slug>
 SLUG=$(echo "$CHAPTER_TITLE" | tr '[:upper:] ' '[:lower:]-' | tr -cd 'a-z0-9-')

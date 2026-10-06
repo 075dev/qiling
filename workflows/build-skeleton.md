@@ -51,7 +51,7 @@ git rev-parse --git-common-dir
 git rev-parse HEAD
 ```
 
-将结果写入 `.planning/STATE.md`:
+将结果写入 `.qiling/planning/STATE.md`:
 
 ```yaml
 ---
@@ -65,10 +65,10 @@ base_sha: <sha>
 **环境自检(任一不过先修复再继续):**
 
 - [ ] `git worktree add` 可用(试建试删一个临时 worktree)
-- [ ] `.planning/` 目录可写
+- [ ] `.qiling/planning/` 目录可写
 - [ ] 当前分支非 main/master(或已建特性分支)
-- [ ] `.planning/context/openapi.yaml` 与 `event-flow.md` 存在且 YAML 可解析
-- [ ] `.planning/context/constitution.md` 状态已确认(存在则读,不存在记录"未建立")
+- [ ] `.qiling/planning/context/openapi.yaml` 与 `event-flow.md` 存在且 YAML 可解析
+- [ ] `.qiling/planning/context/constitution.md` 状态已确认(存在则读,不存在记录"未建立")
 - [ ] **实现基线判定** —— 读 decisions.md 是否有 spec-as-is/棕地决策,并抽查契约项在存量代码中的实现情况:全部无存量实现 → `greenfield`(缺省,骨架=mock);契约项已有存量实现 → `brownfield`(骨架=对齐存量,禁止 mock 化)。判定结果写入步骤 1 的派发任务卡;棕地而无对应决策 → 提示回 `/ql-design` 补一条 spec-as-is 决策
 - [ ] **上下文压力自检** —— 本会话上下文已明显很重(大量讨论历史/多轮修复)时,先把状态落盘(STATE + 本清单),提示用户开新会话跑 `/ql-build` 续做(ql-next 会从磁盘推导断点),不要在腐化上下文里启动编排
 
@@ -78,14 +78,14 @@ base_sha: <sha>
 
 ```bash
 TASKS=$(端点数 + 事件数)   # 从 openapi.yaml 统计
-THRESHOLD=$(grep -o '"inline_threshold": *[0-9]*' .planning/config.json | grep -o '[0-9]*$' || echo 2)
+THRESHOLD=$(grep -o '"inline_threshold": *[0-9]*' .qiling/planning/config.json | grep -o '[0-9]*$' || echo 2)
 ```
 
 **`TASKS <= THRESHOLD`(默认 2)→ 内联模式:** 主会话**不派协调器**,直接实现:
 
 - 按契约逐端点/事件产出骨架(与 worker 同标准、无业务逻辑;greenfield=最小 mock,brownfield=spec-as-is 对齐存量——按步骤 0 的判定执行)
 - 同样遵守工作区门控(步骤 0):特性分支 + base_sha + 原子提交(每端点一个 commit)
-- 完成后**亲自** curl 每个端点 + 触发事件验证连通,按同格式写 `.planning/build/skeleton-report.md`(任务清单 + 连通性证据),再进入 `/ql-build` 填充阶段
+- 完成后**亲自** curl 每个端点 + 触发事件验证连通,按同格式写 `.qiling/planning/build/skeleton-report.md`(任务清单 + 连通性证据),再进入 `/ql-build` 填充阶段
 - 内联模式的验证与后续填充同样内联(见 build-fill 步骤 2 的轻量路径)
 
 **`TASKS > THRESHOLD` → 编排模式:** 按步骤 1 派发协调器(波次并行)。
@@ -100,12 +100,12 @@ THRESHOLD=$(grep -o '"inline_threshold": *[0-9]*' .planning/config.json | grep -
 你的任务:协调骨架阶段(波次并行)
 
 输入:
-- .planning/context/openapi.yaml —— API 契约
-- .planning/context/event-flow.md —— 流程图
-- .planning/config.json —— 工作流配置
-- .planning/STATE.md 中的 work_branch —— worker worktree 基于该分支(绝不基于 main/master)
-- .planning/context/constitution.md(若存在)—— 项目宪法,划分波次与声明 Files 边界前先过一遍:MUST 红线不得安排违反宪法的任务;SHOULD 违规在阶段报告豁免表登记
-- .planning/context/decisions.md(若存在)—— 决策轨迹:提取每张任务卡**只与该任务相关的条目**注入(见协调器定义第 8 项),worker 据此理解设计意图,而非自行发明
+- .qiling/planning/context/openapi.yaml —— API 契约
+- .qiling/planning/context/event-flow.md —— 流程图
+- .qiling/planning/config.json —— 工作流配置
+- .qiling/planning/STATE.md 中的 work_branch —— worker worktree 基于该分支(绝不基于 main/master)
+- .qiling/planning/context/constitution.md(若存在)—— 项目宪法,划分波次与声明 Files 边界前先过一遍:MUST 红线不得安排违反宪法的任务;SHOULD 违规在阶段报告豁免表登记
+- .qiling/planning/context/decisions.md(若存在)—— 决策轨迹:提取每张任务卡**只与该任务相关的条目**注入(见协调器定义第 8 项),worker 据此理解设计意图,而非自行发明
 
 阶段:skeleton(实现基线:[greenfield|brownfield,来自步骤 0 判定];greenfield=每个端点返回 mock、事件能传递;brownfield=spec-as-is 对齐存量实现,禁止 mock 化)
 
@@ -113,7 +113,7 @@ THRESHOLD=$(grep -o '"inline_threshold": *[0-9]*' .planning/config.json | grep -
 
 你的产出:
 1. Walking Skeleton 代码
-2. .planning/build/skeleton-report.md(含覆盖矩阵:每个契约端点/事件 ↔ 任务 ID)
+2. .qiling/planning/build/skeleton-report.md(含覆盖矩阵:每个契约端点/事件 ↔ 任务 ID)
 
 工作方式:
 1. 推导任务列表:每个 OpenAPI 端点 + 每个事件 = 一个任务
@@ -133,7 +133,7 @@ THRESHOLD=$(grep -o '"inline_threshold": *[0-9]*' .planning/config.json | grep -
 
 ## 步骤 2: 验证骨架报告
 
-主会话读 `.planning/build/skeleton-report.md`:
+主会话读 `.qiling/planning/build/skeleton-report.md`:
 
 - [ ] 所有 OpenAPI 端点都已实现(返回 mock)?
 - [ ] 所有事件都已连接?

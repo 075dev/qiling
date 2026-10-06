@@ -40,7 +40,7 @@ allowed-tools:
 
 **产出:**
 - 修复代码 + 回归测试
-- `.planning/bugfix/NNN-<slug>.md`(bugfix 报告,用 `@../templates/bugfix-report.md`)
+- `.qiling/planning/bugfix/NNN-<slug>.md`(bugfix 报告,用 `@../templates/bugfix-report.md`)
 - 章节变更日志追加(若 `.qiling/docs/` 已存在)
 
 **下一步:** 修复完成即结束;若修复暴露设计缺陷需要新功能,转 `/ql-add`;若是契约本身错了,回 `/ql-design` 重审。

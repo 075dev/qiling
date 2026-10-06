@@ -13,7 +13,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, '..');
 
 // 跳过
-const SKIP_DIRS = new Set(['node_modules', '.git', '.planning']);
+const SKIP_DIRS = new Set(['node_modules', '.git', '.qiling']);
 const SKIP_FILES = new Set(['rename.mjs', 'package-lock.json']);
 
 // 候选后缀

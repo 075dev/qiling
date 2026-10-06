@@ -18,36 +18,36 @@ consumes: verification.md, review.md, openapi.yaml
 ## 步骤 1: 前置检查
 
 ```bash
-test -f .planning/build/verification.md || {
+test -f .qiling/planning/build/verification.md || {
   echo "错误: 构建验证未完成。请先运行 /ql-build"
   exit 1
 }
 
-STATUS=$(grep "^status:" .planning/build/verification.md | awk '{print $2}')
+STATUS=$(grep "^status:" .qiling/planning/build/verification.md | awk '{print $2}')
 test "$STATUS" = "passed" || {
   echo "错误: 验证未通过 (status=$STATUS)。请先修复。"
   exit 1
 }
 
 # 验证时效检查:结论是会过期的数据
-V_COMMIT=$(grep "^verified_at_commit:" .planning/build/verification.md | awk '{print $2}')
+V_COMMIT=$(grep "^verified_at_commit:" .qiling/planning/build/verification.md | awk '{print $2}')
 HEAD_SHA=$(git rev-parse HEAD)
 if [ -z "$V_COMMIT" ] || ! git merge-base --is-ancestor "$V_COMMIT" "$HEAD_SHA" 2>/dev/null; then
   echo "错误: 验证报告落后于当前 HEAD (verified_at_commit=$V_COMMIT),结论已 STALE。请重跑验证。"
   exit 1
 fi
 
-test -f .planning/build/review.md || {
+test -f .qiling/planning/build/review.md || {
   echo "错误: 独立评审未完成。请先运行 /ql-build(含阶段 4 评审)"
   exit 1
 }
 
-VERDICT=$(grep "^verdict:" .planning/build/review.md | awk '{print $2}')
+VERDICT=$(grep "^verdict:" .qiling/planning/build/review.md | awk '{print $2}')
 case "$VERDICT" in
   approved) ;;
   waived)
-    WAIVED_BY=$(grep "^waived_by:" .planning/build/review.md | cut -d' ' -f2-)
-    WAIVE_REASON=$(grep "^waive_reason:" .planning/build/review.md | cut -d' ' -f2-)
+    WAIVED_BY=$(grep "^waived_by:" .qiling/planning/build/review.md | cut -d' ' -f2-)
+    WAIVE_REASON=$(grep "^waive_reason:" .qiling/planning/build/review.md | cut -d' ' -f2-)
     test -n "$WAIVED_BY" && test -n "$WAIVE_REASON" || {
       echo "错误: 评审为 waived 但缺少 waived_by / waive_reason。豁免必须登记完整。"
       exit 1
@@ -73,7 +73,7 @@ git status --short | grep -q . && {
 ```bash
 git branch --show-current          # 特性分支
 git rev-parse HEAD                 # head SHA
-grep "^base_sha:" .planning/STATE.md   # base SHA
+grep "^base_sha:" .qiling/planning/STATE.md   # base SHA
 test -d .qiling/docs && echo ".qiling/docs/"   # 章节留档路径
 ```
 
@@ -101,7 +101,7 @@ PR_BODY=$(cat <<EOF
 ## 实现 [从 OpenAPI 提取的功能集]
 
 ### API 端点
-$(grep "^  /" .planning/context/openapi.yaml | sed 's/^/  - /')
+$(grep "^  /" .qiling/planning/context/openapi.yaml | sed 's/^/  - /')
 
 ### 事件流程
 [从 event-flow.md 提取关键场景]
@@ -160,7 +160,7 @@ current_phase: 1_of_N_done
 
 ## 步骤 5: 推进到下一阶段
 
-读 `.planning/STATE.md` 中的 `total_phases`(若有)。若 < N:
+读 `.qiling/planning/STATE.md` 中的 `total_phases`(若有)。若 < N:
 - 提示:`/ql-design`(进入下一讨论阶段)
 
 若所有阶段已交付:

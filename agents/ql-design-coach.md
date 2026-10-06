@@ -75,7 +75,7 @@ color: blue
 
 完成对话后,产出两个文件:
 
-### 1. `.planning/context/openapi.yaml`
+### 1. `.qiling/planning/context/openapi.yaml`
 
 用 `@../templates/openapi-spec.yaml` 模板。**至少包含:**
 - 1 个 info 块(标题、版本)
@@ -83,7 +83,7 @@ color: blue
 - 1+ schemas
 - 错误响应(若讨论了错误模型)
 
-### 2. `.planning/context/event-flow.md`
+### 2. `.qiling/planning/context/event-flow.md`
 
 用 `@../templates/event-flow.md` 模板。**包含:**
 - 1 个 sequenceDiagram(组件协作)

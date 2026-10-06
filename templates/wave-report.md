@@ -1,6 +1,6 @@
 # 波次报告模板
 #
-# 用途:`.planning/build/waves/<wave-id>-<task-id>.md`
+# 用途:`.qiling/planning/build/waves/<wave-id>-<task-id>.md`
 #
 # 每个 worker 完成后产出一份。协调器不读实现细节,只读这份报告。
 

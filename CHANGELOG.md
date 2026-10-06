@@ -5,6 +5,30 @@
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.19.0] - 2026-09-28
+
+### 结构统一:工作数据 .planning/ 整体迁入 .qiling/planning/(单一数据目录)
+
+**背景:** 用户反馈工作目录分两部分(`.qiling/` 对外文档 + `.planning/` 工作数据)太散,应统一收纳。新布局:`.qiling/planning/`(工作数据,内部结构不变:STATE.md / config.json / context/ / build/ / bugfix/)+ `.qiling/planning-backups/`(迁移备份,原根级 `.planning-backups/` 同步迁入)——项目里只剩 `.qiling/` 一个器灵目录。
+
+**迁移引擎(migrate.mjs):**
+
+- 新增 **M6-planning-into-qiling** 规则(规则表最后执行:先让 M1~M5 在旧路径完成修改,再 `renameSync` 整体移动,零拷贝零丢失);apply 内同步切换 `ctx.paths`,保证迁移后锚点刷新写进新位置
+- `buildContext` **双路径感知**:优先 `.qiling/planning/`,未迁移项目回退 `.planning/`;入口检查同样双路径——旧项目永远能进入迁移流程
+- 旧根级 `.planning-backups/` 并入 `.qiling/planning-backups/`:目标已存在(本轮刚写过备份)时并入为 `legacy-root/` 子目录,不覆盖
+- 自测 17 → 20 条断言(新增:目录迁移、旧备份并入、dry-run 不迁移;场景 1 造数改回旧布局端到端覆盖 M6)
+
+**全仓配套:**
+
+- 51 个文件约 290 处 `.planning/` 路径字面量批量替换(skills / commands / workflows / agents / templates / docs / README);相对链接单独修正(章节内 `../../.planning/...` → `../planning/...`);CHANGELOG 与 docs/ 两份历史评审报告按历史档案原则不改
+- `capability.json` 的 `localConfigDir` 与 `destSubpath` → `.qiling/planning`(插件宿主定位配置目录的声明随之切换)
+- `docsmap.mjs`:附录 C 关联文档链接改为 `../planning/STATE.md`(章节相对新路径);`IGNORE_DIRS` 保留 `.planning`(兼容未迁移项目)
+- `rename.mjs` 跳过清单从 `.planning` 扩为 `.qiling` 整目录(改名工具不再触碰数据与生成物)
+
+**真实迁移验证:** 本仓库与 VSCodeUEHelper 均已执行 `/ql-update` 迁移(dry-run → 实际):`.planning/` 消失、数据完整、备份落 `.qiling/planning-backups/`;两项目文档树重扫 11 断言全绿,附录 C 链接指向新路径。
+
+**全套自检:** migrate:test 20/20、docsmap 11 断言、chapter:render 10/10、verify:flow 20/20、verify:schema 通过、validate 0 错误。
+
 ## [0.18.1] - 2026-09-28
 
 ### 修复:点开头的 AI 工具状态目录吃光目录树截断额度,子目录 MD 全部不可见

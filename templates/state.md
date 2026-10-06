@@ -1,6 +1,6 @@
 # STATE 模板
 #
-# 用途:`.planning/STATE.md`——阶段循环的状态机
+# 用途:`.qiling/planning/STATE.md`——阶段循环的状态机
 
 ---
 
@@ -20,7 +20,7 @@ base_sha: <构建起点 SHA,独立评审 diff 锚点>
 
 ## 项目引用
 
-参见:`.planning/context/openapi.yaml` 与 `.planning/context/event-flow.md`
+参见:`.qiling/planning/context/openapi.yaml` 与 `.qiling/planning/context/event-flow.md`
 
 **当前焦点:** [从 OpenAPI 推断的核心功能]
 

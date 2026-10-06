@@ -1,6 +1,6 @@
 # Bug 修复报告模板
 #
-# 用途:`.planning/bugfix/NNN-<slug>.md`
+# 用途:`.qiling/planning/bugfix/NNN-<slug>.md`
 # 编号:NNN = 现有最大编号 + 1(001 起)
 # 产出者:主会话(小修)或 ql-builder-coordinator(大修)
 

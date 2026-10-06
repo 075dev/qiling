@@ -1,6 +1,6 @@
 # 项目宪法模板
 #
-# 用途:`.planning/context/constitution.md`
+# 用途:`.qiling/planning/context/constitution.md`
 # 产出时机:首次 /ql-design 讨论时生成(可选);后续阶段只读引用
 # 治理:修订需在文中留痕(版本号 + 修订记录),不允许静默改动
 

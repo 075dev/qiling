@@ -27,7 +27,7 @@ requires: []
 
 **产出:**
 - 修复代码 + 回归测试
-- `.planning/bugfix/NNN-<slug>.md`
+- `.qiling/planning/bugfix/NNN-<slug>.md`
 
 **下一步:** 完成;若需新功能转 `/ql-add`
 </objective>

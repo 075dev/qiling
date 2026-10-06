@@ -130,15 +130,15 @@ curl -X GET "https://api.example.com/[第一个 GET 端点的真实路径]" \
 
 ### A.2 讨论阶段产出
 
-- **OpenAPI 契约:** `.planning/context/openapi.yaml`(端点数: N, schema 数: M)
-- **事件流程图:** `.planning/context/event-flow.md`
+- **OpenAPI 契约:** `.qiling/planning/context/openapi.yaml`(端点数: N, schema 数: M)
+- **事件流程图:** `.qiling/planning/context/event-flow.md`
 - **关键决策:** [从 STATE.md 的"累积上下文 > 决策"提取]
 
 ### A.3 构建与验证产出
 
-- **骨架报告:** `.planning/build/skeleton-report.md`(波次/端点 mock/事件连接)
-- **填充报告:** `.planning/build/fill-report.md`(mock 替换率/测试用例)
-- **验证报告:** `.planning/build/verification.md`(契约/流程符合度)
+- **骨架报告:** `.qiling/planning/build/skeleton-report.md`(波次/端点 mock/事件连接)
+- **填充报告:** `.qiling/planning/build/fill-report.md`(mock 替换率/测试用例)
+- **验证报告:** `.qiling/planning/build/verification.md`(契约/流程符合度)
 
 ### A.4 交付产出
 

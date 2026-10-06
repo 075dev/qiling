@@ -22,7 +22,7 @@ allowed-tools:
 - `--auto` —— 自动模式。生成 API 与流程的"最小可工作集",不询问细节。
 
 **讨论阶段编号:**
-- 若 `.planning/STATE.md` 已存在 → 读 `current_phase`
+- 若 `.qiling/planning/STATE.md` 已存在 → 读 `current_phase`
 - 否则 → 1
 
 **Orient 优先:** 提问前先勘察仓库(package.json、README、近期提交)——技术栈、领域命名、当前方向直接采用,只问真正的产品决策。绝不问环境已经能回答的问题。
@@ -51,10 +51,10 @@ allowed-tools:
 - 文件组织(由 AI 决定)
 
 **产出:**
-- `.planning/context/openapi.yaml`(已存在时**就地修订**,不另建第二份规范)
-- `.planning/context/event-flow.md`(同上)
-- `.planning/context/decisions.md`(决策轨迹:每个非显然设计选择留痕 decision/reason/alternatives/tradeoff,append-only)
-- `.planning/STATE.md` 更新
+- `.qiling/planning/context/openapi.yaml`(已存在时**就地修订**,不另建第二份规范)
+- `.qiling/planning/context/event-flow.md`(同上)
+- `.qiling/planning/context/decisions.md`(决策轨迹:每个非显然设计选择留痕 decision/reason/alternatives/tradeoff,append-only)
+- `.qiling/planning/STATE.md` 更新
 
 **下一步:** `/ql-build`
 </objective>

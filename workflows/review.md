@@ -25,7 +25,7 @@ consumes: openapi.yaml, event-flow.md, decisions.md(若存在), verification.md,
 ## 步骤 0: 前置检查
 
 ```bash
-STATUS=$(grep "^status:" .planning/build/verification.md | awk '{print $2}')
+STATUS=$(grep "^status:" .qiling/planning/build/verification.md | awk '{print $2}')
 test "$STATUS" = "passed" || {
   echo "错误: 验证未通过 (status=$STATUS),评审无意义。请先修复。"
   exit 1
@@ -38,7 +38,7 @@ test "$STATUS" = "passed" || {
 
 ```bash
 # base SHA 在骨架阶段开始前已记录到 STATE(见 build-skeleton 步骤 0)
-BASE=$(grep "^base_sha:" .planning/STATE.md | awk '{print $2}')
+BASE=$(grep "^base_sha:" .qiling/planning/STATE.md | awk '{print $2}')
 HEAD=$(git rev-parse HEAD)
 ```
 
@@ -53,14 +53,14 @@ HEAD=$(git rev-parse HEAD)
 
 输入:
 - 工作目录:[工作区绝对路径]
-- 规范:.planning/context/openapi.yaml + .planning/context/event-flow.md
-- 设计意图:.planning/context/decisions.md(若存在)—— 决策轨迹,用于区分"实现错了"与"契约滞后于决策"
-- 验证摘要:.planning/build/verification.md(每条命令一行 PASS/FAIL/PRE-EXISTING)
-- 构建报告:.planning/build/fill-report.md(当 claim 读,不当事实)
+- 规范:.qiling/planning/context/openapi.yaml + .qiling/planning/context/event-flow.md
+- 设计意图:.qiling/planning/context/decisions.md(若存在)—— 决策轨迹,用于区分"实现错了"与"契约滞后于决策"
+- 验证摘要:.qiling/planning/build/verification.md(每条命令一行 PASS/FAIL/PRE-EXISTING)
+- 构建报告:.qiling/planning/build/fill-report.md(当 claim 读,不当事实)
 - diff 范围:git diff <BASE>..<HEAD>
-- 复审轮次 ≥2 时:上一轮 .planning/build/review.md 中被标记为待复审的 critical 项
+- 复审轮次 ≥2 时:上一轮 .qiling/planning/build/review.md 中被标记为待复审的 critical 项
 
-产出:.planning/build/review.md(用 templates/review.md 格式)
+产出:.qiling/planning/build/review.md(用 templates/review.md 格式)
 
 要求:
 1. 三个独立结论:契约合规 / 正确性 / 代码库一致性
@@ -74,7 +74,7 @@ HEAD=$(git rev-parse HEAD)
 ## 步骤 3: 读 review.md 处理裁定
 
 ```bash
-VERDICT=$(grep "^verdict:" .planning/build/review.md | awk '{print $2}')
+VERDICT=$(grep "^verdict:" .qiling/planning/build/review.md | awk '{print $2}')
 ```
 
 **若 `approved`:**

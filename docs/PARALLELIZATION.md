@@ -186,9 +186,9 @@ def assign_waves(tasks, deps):
 ```yaml
 任务:实现端点 GET /users/:id
 输入:
-  - OpenAPI 契约(.planning/context/openapi.yaml 的相关 schema)
+  - OpenAPI 契约(.qiling/planning/context/openapi.yaml 的相关 schema)
   - 流程图(若该端点涉及事件)
-  - 骨架报告(.planning/build/skeleton-report.md,填充阶段)
+  - 骨架报告(.qiling/planning/build/skeleton-report.md,填充阶段)
 工作目录:.git/ql/worktrees/wt-1
 分支:ql/wave-1/get-users
 产出:

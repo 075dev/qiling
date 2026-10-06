@@ -18,7 +18,7 @@ color: yellow
 **你的产出:**
 1. 实现代码(在工作目录中)
 2. 测试代码
-3. 单端点报告(`.planning/build/waves/<id>.md`)
+3. 单端点报告(`.qiling/planning/build/waves/<id>.md`)
 4. 原子提交
 
 **关键纪律:**
@@ -40,7 +40,7 @@ color: yellow
 输入:
   - 工作目录: [worktree_path]
   - 分支: [branch]
-  - OpenAPI 契约路径: .planning/context/openapi.yaml
+  - OpenAPI 契约路径: .qiling/planning/context/openapi.yaml
   - 相关 schema: [User, Order] (仅这些)
   - 相关流程图: [user-created-events] (仅这些)
   - 相关决策: [D3: 错误模型统一为 BUSINESS_ERROR](仅相关条目,可选)
@@ -66,7 +66,7 @@ git log --oneline -5
 
 ```bash
 # 完整 OpenAPI(用于理解上下文)
-cat .planning/context/openapi.yaml
+cat .qiling/planning/context/openapi.yaml
 
 # 你需要实现的端点(从协调器任务描述中提取)
 # 实现:GET /users/:id
@@ -79,10 +79,10 @@ cat .planning/context/openapi.yaml
 
 # 相关决策(若任务卡给了 D-N 条目)
 # 契约没规定的细节(错误响应结构、分页约定、幂等语义)按决策精神补齐,不自行发明——
-# 决策原文在 .planning/context/decisions.md,只读任务卡点名的条目
+# 决策原文在 .qiling/planning/context/decisions.md,只读任务卡点名的条目
 
 # 上阶段报告(若填充阶段)
-cat .planning/build/skeleton-report.md
+cat .qiling/planning/build/skeleton-report.md
 ```
 
 **只读相关部分,不要通读所有 OpenAPI/YAML。**
@@ -209,7 +209,7 @@ git commit -m "feat([task]): [description]"
 
 ## 步骤 8: 写单端点报告
 
-`.planning/build/waves/<task-id>.md`:
+`.qiling/planning/build/waves/<task-id>.md`:
 
 ```markdown
 ---

@@ -98,7 +98,7 @@ let PROJECT_NAME = opts['project-name'] || (pkg && pkg.name) || basename(ROOT);
 const PROJECT_DESC = (pkg && pkg.description) || '';
 
 // === 常量:忽略清单 / 目录职责词典 / 框架词典(标注推断用) ===
-const IGNORE_DIRS = new Set(['node_modules', 'dist', 'build', '.git', '.qiling', '.planning', 'coverage', 'out', '.turbo', '.next', '.cache', '.tmp', 'vendor', 'target', '.vscode-test']);
+const IGNORE_DIRS = new Set(['node_modules', 'dist', 'build', '.git', '.qiling', '.qiling/planning', 'coverage', 'out', '.turbo', '.next', '.cache', '.tmp', 'vendor', 'target', '.vscode-test']);
 const IGNORE_FILES = new Set(['.DS_Store', 'Thumbs.db', 'package-lock.json', 'pnpm-lock.yaml', 'yarn.lock']);
 // 点开头目录默认是 AI 工具/环境状态(.omc/.serena/.specify/.claude/.cursor 等)——
 // 它们会把 80 项截断额度吃光,把 doc/、src/ 等真实项目内容挤出目录树(bugfix:子目录 MD 无法索引)。
@@ -700,8 +700,8 @@ ${whereNew}
 ### C.1 关联文档
 
 - [文档树索引](../README.md)
-- 项目状态:${existsSync(join(ROOT, '.planning', 'STATE.md')) ? '[../.planning/STATE.md](../../.planning/STATE.md)' : '未检出(尚未进入器灵工作流)'}
-- OpenAPI 契约:${existsSync(join(ROOT, '.planning', 'context', 'openapi.yaml')) ? '[.planning/context/openapi.yaml](../../.planning/context/openapi.yaml)' : '未检出(运行 /ql-design 后生成)'}
+- 项目状态:${existsSync(join(ROOT, '.qiling', 'planning', 'STATE.md')) ? '[../planning/STATE.md](../planning/STATE.md)' : '未检出(尚未进入器灵工作流)'}
+- OpenAPI 契约:${existsSync(join(ROOT, '.qiling', 'planning', 'context', 'openapi.yaml')) ? '[.qiling/planning/context/openapi.yaml](../planning/context/openapi.yaml)' : '未检出(运行 /ql-design 后生成)'}
 
 ### C.2 未检出清单
 

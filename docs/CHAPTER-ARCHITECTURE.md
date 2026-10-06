@@ -44,9 +44,9 @@
 ```
 
 **为什么放 `.qiling/` 而不是仓库根:**
-- 项目本地目录,与运行时数据(`.planning/`)隔离
+- 项目本地目录,与运行时数据(`.qiling/planning/`)隔离
 - 与 `.git/`(版本控制)、`node_modules/`(依赖)区分
-- 用户进入项目一眼能看到三个目录:`.git/`(版本)、`.planning/`(工作流数据)、`.qiling/`(对外文档)
+- 用户进入项目一眼能看到三个目录:`.git/`(版本)、`.qiling/planning/`(工作流数据)、`.qiling/`(对外文档)
 
 ---
 
@@ -153,12 +153,12 @@ ql-doc(章节留档)     # 自动调用,生成 .qiling/docs/
 
 | 现有产物 | 章节文档引用 |
 |----------|--------------|
-| `.planning/context/openapi.yaml` | §三 数据来源(单一可信源) |
-| `.planning/context/event-flow.md` | 附录 A 数据来源 |
-| `.planning/STATE.md` | 附录 A / 附录 C 引用 |
-| `.planning/build/skeleton-report.md` | 附录 A 数据来源 |
-| `.planning/build/fill-report.md` | 附录 A 数据来源 |
-| `.planning/build/verification.md` | 附录 A 数据来源 |
+| `.qiling/planning/context/openapi.yaml` | §三 数据来源(单一可信源) |
+| `.qiling/planning/context/event-flow.md` | 附录 A 数据来源 |
+| `.qiling/planning/STATE.md` | 附录 A / 附录 C 引用 |
+| `.qiling/planning/build/skeleton-report.md` | 附录 A 数据来源 |
+| `.qiling/planning/build/fill-report.md` | 附录 A 数据来源 |
+| `.qiling/planning/build/verification.md` | 附录 A 数据来源 |
 | Git log(本分支) | 附录 A 数据来源 |
 | GitHub PR | 附录 A 关联链接 |
 
@@ -193,7 +193,7 @@ ql-doc(章节留档)     # 自动调用,生成 .qiling/docs/
 ### 何时修改章节文档
 
 **机器节(§三~§五、附录)不要手改**——下次生成会覆盖。若内容有误,正确做法是:
-1. 修改 `.planning/context/openapi.yaml`(源头)
+1. 修改 `.qiling/planning/context/openapi.yaml`(源头)
 2. 重跑 `/ql-design` 或直接 `/ql-build`(取决于修改幅度)
 3. 重跑 `/ql-deliver`(自动重新生成章节)
 
@@ -215,7 +215,7 @@ ql-doc(章节留档)     # 自动调用,生成 .qiling/docs/
 
 ## 十二、章节留档 vs 任务留档(等价性论证)
 
-> **核心论点:** 章节粒度是任务粒度的**等价替代**,而非低配版。"完整的任务留档能力"已经在章节文档中**全部承载**——不需要额外维护 `.planning/tasks.md` 或在 `STATE.md` 加任务清单节。
+> **核心论点:** 章节粒度是任务粒度的**等价替代**,而非低配版。"完整的任务留档能力"已经在章节文档中**全部承载**——不需要额外维护 `.qiling/planning/tasks.md` 或在 `STATE.md` 加任务清单节。
 >
 > **历史注记:** 本节论证写于 2026-08-28(0.4.x),文中 §一/§二/§三 等节名按当时的五节结构;0.17.0 起结构见本文第三节(说明书式),论证逻辑不变,对应关系按新节名平移(端点清单 → §三,流程留档 → 附录 A,变更对比 → 附录 B)。
 
@@ -276,7 +276,7 @@ ql-doc(章节留档)     # 自动调用,生成 .qiling/docs/
 | 跨会话续作 | ✅ `current_phase` + 章节 ID 足够 |
 | 高层管理周报 | ✅ 索引 README 列出所有章节 + 状态 |
 | 单端点级别负责人 | ⚠️ 章节粒度看不到个人,但 Git history 已记录 worker ID |
-| 单端点 ETA 跟踪 | ❌ 若必须精确到小时,需 `.planning/tasks.md` |
+| 单端点 ETA 跟踪 | ❌ 若必须精确到小时,需 `.qiling/planning/tasks.md` |
 
 **结论:对于"以章节作为项目开发文档"这一目标,不需要任务粒度。**
 

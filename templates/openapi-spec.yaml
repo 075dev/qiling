@@ -1,6 +1,6 @@
 # OpenAPI 3.1 契约模板
 #
-# 用途:`.planning/context/openapi.yaml`
+# 用途:`.qiling/planning/context/openapi.yaml`
 #
 # 这是讨论阶段的产出,作为 AI 自动构建的输入。
 # 模板故意**留空**——所有具体内容由讨论对话填充。

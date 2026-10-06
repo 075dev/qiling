@@ -102,11 +102,11 @@ AI 生成的后端代码有**稳定的失败模式**——不是随机 bug,而�
 ## 步骤 1: 加载评审输入
 
 ```
-1. .planning/context/openapi.yaml        —— API 规范(= 验收标准的来源)
-2. .planning/context/event-flow.md       —— 事件流程规范
-3. .planning/context/decisions.md        —— 决策轨迹(若存在):设计意图参照
-4. .planning/build/verification.md       —— 验证摘要(每条命令一行)
-5. .planning/build/fill-report.md        —— 填充报告(当 claim 读)
+1. .qiling/planning/context/openapi.yaml        —— API 规范(= 验收标准的来源)
+2. .qiling/planning/context/event-flow.md       —— 事件流程规范
+3. .qiling/planning/context/decisions.md        —— 决策轨迹(若存在):设计意图参照
+4. .qiling/planning/build/verification.md       —— 验证摘要(每条命令一行)
+5. .qiling/planning/build/fill-report.md        —— 填充报告(当 claim 读)
 6. diff 命令(任务描述中给出,如 git diff <base>..<head>)
 ```
 
@@ -139,7 +139,7 @@ git diff <base>..<head>          # 再读细节
 
 ## 步骤 5: 写评审报告
 
-用 `@../templates/review.md` 的格式写 `.planning/build/review.md`:
+用 `@../templates/review.md` 的格式写 `.qiling/planning/build/review.md`:
 
 - `verdict: approved | criticals_found`
 - 三个结论,每个发现附证据

@@ -18,8 +18,8 @@ requires: [ql-design]
 **关闭** 讨论 → 构建 → 交付循环。
 
 **前置条件:**
-- `.planning/build/verification.md` 状态为 `passed`
-- `.planning/build/review.md` verdict 为 `approved` 或 `waived`(waived 必须带豁免人与理由,被豁免 critical 写入交付记录)
+- `.qiling/planning/build/verification.md` 状态为 `passed`
+- `.qiling/planning/build/review.md` verdict 为 `approved` 或 `waived`(waived 必须带豁免人与理由,被豁免 critical 写入交付记录)
 - 工作区干净(已提交或暂存)
 - 不在主分支上
 

@@ -18,7 +18,7 @@ requires: []
 <objective>
 **把新功能加进现有章节体系**(章节循环的旁路入口)。
 
-**前置:** `.planning/context/openapi.yaml` 已存在(否则先 `/ql-design` 或 `/ql-scan`)。
+**前置:** `.qiling/planning/context/openapi.yaml` 已存在(否则先 `/ql-design` 或 `/ql-scan`)。
 
 **流程:**
 1. **定位** —— `--at` 指定落点;留空则按契约与章节证据自动判断,歧义时询问
@@ -30,7 +30,7 @@ requires: []
 **标志:**
 - `--at <章节|资源>` —— 定向指定,如 `--at chapter-02` 或 `--at orders`
 
-**产出:** 新功能代码 + 更新后的契约/章节 + `.planning/add/NNN-<slug>.md`
+**产出:** 新功能代码 + 更新后的契约/章节 + `.qiling/planning/add/NNN-<slug>.md`
 
 **下一步:** `/ql-deliver`
 </objective>

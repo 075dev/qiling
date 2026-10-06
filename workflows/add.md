@@ -2,7 +2,7 @@
 step: add
 points: add:pre, add:post
 agent-roles: ql-builder-coordinator, ql-builder-worker, ql-reviewer
-produces: 新功能代码, 更新后的 openapi.yaml/event-flow.md/章节文档, .planning/add/NNN-<slug>.md
+produces: 新功能代码, 更新后的 openapi.yaml/event-flow.md/章节文档, .qiling/planning/add/NNN-<slug>.md
 consumes: openapi.yaml, event-flow.md, .qiling/docs/, 现有代码
 -->
 
@@ -23,13 +23,13 @@ consumes: openapi.yaml, event-flow.md, .qiling/docs/, 现有代码
 ## 步骤 0: 前置与勘察(Orient)
 
 ```bash
-test -f .planning/context/openapi.yaml || {
+test -f .qiling/planning/context/openapi.yaml || {
   echo "错误: 契约不存在。请先运行 /ql-design(新项目)或 /ql-scan(接手项目)"
   exit 1
 }
 
 # 现状盘点
-cat .planning/STATE.md
+cat .qiling/planning/STATE.md
 ls .qiling/docs/chapters/ 2>/dev/null
 ```
 
@@ -40,7 +40,7 @@ ls .qiling/docs/chapters/ 2>/dev/null
 | /users、User | chapter-02 | user.created |
 | /orders、Order | chapter-03 | order.paid |
 
-编号:`.planning/add/` 现有最大 NNN + 1。
+编号:`.qiling/planning/add/` 现有最大 NNN + 1。
 
 ## 步骤 1: 提炼新功能的契约面
 
@@ -70,15 +70,15 @@ ls .qiling/docs/chapters/ 2>/dev/null
 
 **Never-Ask 降级:** `AskUserQuestion` 不可用/被拒时,仅对该定位决策自决——取证据最强的单一匹配;全新领域默认新建章节。在报告中说明判断依据。
 
-**落点判定记录到 `.planning/add/NNN-<slug>.md`**(指定/自动/询问,证据是什么)。
+**落点判定记录到 `.qiling/planning/add/NNN-<slug>.md`**(指定/自动/询问,证据是什么)。
 
 ## 步骤 3: 补契约(就地修订)
 
-编辑 `.planning/context/openapi.yaml` 与 `event-flow.md`:
+编辑 `.qiling/planning/context/openapi.yaml` 与 `event-flow.md`:
 
 - 新端点/事件/schema 写入对应位置(与既有风格一致)
 - **绝不另建第二份规范文档,绝不重写未受影响的章节**
-- **决策轨迹同步追加** —— `.planning/context/decisions.md` 存在时,本次新增的非显然选择(新端点取舍、错误语义、事件边界)按模板追加新行(编号延续);**与既有 D-N 冲突时必须走"取代 D-N"流程**(旧行标 superseded、新行注明取代关系、同步修订受影响的契约段),**不允许静默推翻**——既有决策是构建与评审的事实依据,默默绕过它会让后续构建与历史依据自相矛盾
+- **决策轨迹同步追加** —— `.qiling/planning/context/decisions.md` 存在时,本次新增的非显然选择(新端点取舍、错误语义、事件边界)按模板追加新行(编号延续);**与既有 D-N 冲突时必须走"取代 D-N"流程**(旧行标 superseded、新行注明取代关系、同步修订受影响的契约段),**不允许静默推翻**——既有决策是构建与评审的事实依据,默默绕过它会让后续构建与历史依据自相矛盾
 - **契约版本递增**(OpenAPI `info.version`,语义化):
   - 仅新增端点/事件/schema 字段(向后兼容)→ **minor** +1(0.3.0 → 0.4.0)
   - 修改既有语义、删除字段/端点、必填变更(破坏性)→ **major** +1,并在受影响 path 的 `description` 标注破坏点与迁移提示
@@ -93,7 +93,7 @@ ls .qiling/docs/chapters/ 2>/dev/null
 你的任务:增量构建——只实现新增端点/事件
 
 输入:
-- 契约:.planning/context/openapi.yaml(本次新增:N 端点,M 事件,清单如下)
+- 契约:.qiling/planning/context/openapi.yaml(本次新增:N 端点,M 事件,清单如下)
 - 新增任务清单:[枚举]
 - 现有代码:基于当前特性分支增量实现,复用既有 schema/工具/中间件
 - 阶段:skeleton → fill(两轮波次并行,同 /ql-build 机制)
@@ -101,7 +101,7 @@ ls .qiling/docs/chapters/ 2>/dev/null
 约束:
 - 任务范围仅限新增清单;不重构既有代码
 - 依赖既有代码的任务(如复用 User schema)按依赖规则排波次
-- 产出:代码 + 测试 + fill-report.md(可追加到 .planning/build/)
+- 产出:代码 + 测试 + fill-report.md(可追加到 .qiling/planning/build/)
 ```
 
 构建完成后主会话**亲自复核**关键命令(测试 + 构建,fresh evidence)。

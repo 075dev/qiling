@@ -2,12 +2,12 @@
 /**
  * 器灵工作流插件 - 工件迁移引擎(/ql-update 的确定性层)
  *
- * 插件升级后,把用户项目 `.planning/` 工件迁移到当前插件版本的格式。
+ * 插件升级后,把用户项目 `.qiling/planning/` 工件迁移到当前插件版本的格式。
  *
  * 设计原则:
  * - 机器可判定的变化走本脚本(幂等、可测试);需要理解的差异由 /ql-update 工作流处理
  * - 契约(openapi.yaml)、事件流程(event-flow.md)、决策(decisions.md)是用户内容,永不触碰
- * - 迁移前自动备份整个 .planning/ 到 .planning/.backup-<旧版本>/
+ * - 迁移前自动备份整个 .qiling/planning/ 到 .qiling/planning-backups/.backup-<旧版本>/
  * - 重复执行安全(幂等):已迁移的项目跑一遍报告"无需迁移"
  *
  * 用法:
@@ -20,7 +20,7 @@
  */
 
 import {
-  readFileSync, writeFileSync, existsSync, mkdirSync, rmSync, cpSync, readdirSync
+  readFileSync, writeFileSync, existsSync, mkdirSync, rmSync, cpSync, readdirSync, renameSync
 } from 'node:fs';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -145,6 +145,35 @@ const MIGRATIONS = [
         || (/项目说明书/.test(ctx.docsIndex) && !/^## 目录/m.test(ctx.docsIndex))),
     plan: (ctx) => '文档树为旧版格式(目录树/章节列表/说明书首页):建议跑 /ql-scan --force 重扫为最新教科书式项目书(章节内 manual 人工块会自动保留)',
     apply: () => {} // 只报告,不改
+  },
+  {
+    id: 'M6-planning-into-qiling',
+    since: '0.19.0',
+    // 结构迁移:工作数据 .planning/ 整体迁入 .qiling/planning/(与对外文档 .qiling/docs/ 统一收纳)
+    // 放在规则表最后:先让 M1~M5 在旧路径完成修改,再整体移动;apply 内同步切换 ctx.paths,
+    // 保证迁移后的锚点刷新写进新位置
+    detect: (ctx) => existsSync(ctx.paths.planningOld) && !existsSync(ctx.paths.planningNew),
+    plan: (ctx) => '.planning/ 整体迁入 .qiling/planning/(工作数据与对外文档统一收纳;旧根级 .planning-backups/ 同步迁入 .qiling/planning-backups/)',
+    apply: (ctx) => {
+      mkdirSync(join(ctx.project, '.qiling'), { recursive: true });
+      renameSync(ctx.paths.planningOld, ctx.paths.planningNew);
+      const oldBackups = join(ctx.project, '.planning-backups');
+      const newBackups = join(ctx.project, '.qiling', 'planning-backups');
+      if (existsSync(oldBackups)) {
+        if (!existsSync(newBackups)) {
+          renameSync(oldBackups, newBackups);
+        } else {
+          // 新备份目录已存在(本轮迁移刚写过备份)→ 旧根级备份并入为 legacy-root,不覆盖
+          cpSync(oldBackups, join(newBackups, 'legacy-root'), { recursive: true });
+          rmSync(oldBackups, { recursive: true, force: true });
+        }
+      }
+      // 后续规则与锚点刷新切换到新路径
+      ctx.paths.planning = ctx.paths.planningNew;
+      ctx.paths.state = join(ctx.paths.planningNew, 'STATE.md');
+      ctx.paths.config = join(ctx.paths.planningNew, 'config.json');
+      ctx.paths.verification = join(ctx.paths.planningNew, 'build', 'verification.md');
+    }
   }
 ];
 
@@ -153,11 +182,18 @@ const MIGRATIONS = [
 // ─────────────────────────────────────────────
 
 function buildContext(projectDir, targetVersion) {
+  // 双路径感知:0.19.0 起工作数据统一收纳在 .qiling/planning/(与对外文档 .qiling/docs/ 同仓);
+  // 未迁移的旧项目仍读 .planning/,由 M6 规则整体迁入
+  const planningNew = join(projectDir, '.qiling', 'planning');
+  const planningOld = join(projectDir, '.planning');
+  const planning = existsSync(planningNew) ? planningNew : planningOld;
   const p = {
-    planning: join(projectDir, '.planning'),
-    state: join(projectDir, '.planning', 'STATE.md'),
-    config: join(projectDir, '.planning', 'config.json'),
-    verification: join(projectDir, '.planning', 'build', 'verification.md'),
+    planning,
+    planningNew,
+    planningOld,
+    state: join(planning, 'STATE.md'),
+    config: join(planning, 'config.json'),
+    verification: join(planning, 'build', 'verification.md'),
     docsIndex: join(projectDir, '.qiling', 'docs', 'README.md')
   };
   const stateRaw = existsSync(p.state) ? readFileSync(p.state, 'utf8') : null;
@@ -200,8 +236,8 @@ function collectActions(ctx) {
 
 function backupPlanning(ctx, fromLabel) {
   const stamp = fromLabel || 'unknown';
-  // 备份放项目根 .planning-backups/(与 .planning 平级)——放 .planning 内部会变成"复制到自身子目录"
-  const backupsRoot = join(ctx.project, '.planning-backups');
+  // 备份放 .qiling/planning-backups/(与 .qiling/planning 同级,统一收纳在 .qiling/ 下)
+  const backupsRoot = join(ctx.project, '.qiling/planning-backups');
   mkdirSync(backupsRoot, { recursive: true });
   let dest = join(backupsRoot, `.backup-${stamp}`);
   if (existsSync(dest)) {
@@ -215,8 +251,11 @@ function runMigration(projectDir, { dryRun = false, checkOnly = false } = {}) {
   const targetVersion = pluginVersion();
   const lines = [];
 
-  if (!existsSync(join(projectDir, '.planning'))) {
-    lines.push('未发现 .planning/(项目未用器灵初始化),无需迁移。');
+  // 双路径入口:新布局 .qiling/planning/ 或旧布局 .planning/ 任一存在即可进入迁移流程
+  const hasNewLayout = existsSync(join(projectDir, '.qiling', 'planning'));
+  const hasOldLayout = existsSync(join(projectDir, '.planning'));
+  if (!hasNewLayout && !hasOldLayout) {
+    lines.push('未发现 .qiling/planning/(项目未用器灵初始化),无需迁移。');
     lines.push('若要开始使用:新项目 /ql-design;接手已有代码 /ql-scan。');
     return { exitCode: 0, output: lines.join('\n') };
   }
@@ -230,7 +269,7 @@ function runMigration(projectDir, { dryRun = false, checkOnly = false } = {}) {
   lines.push(`项目版本:${detected.source}${detected.version ? `(${detected.version})` : ''}`);
   lines.push('');
 
-  // 核心工件完整性:有 .planning/ 但缺 STATE.md / config.json = 残缺状态(常见:只用过
+  // 核心工件完整性:有 .qiling/planning/ 但缺 STATE.md / config.json = 残缺状态(常见:只用过
   // /ql-fix、/ql-add 等旁路技能,主线从未初始化)。迁移规则对这种形态全部不适用,
   // 若无此检查会静默报"✅ 无需迁移",把真问题盖在成功话术下面
   const missingCore = [];
@@ -241,7 +280,7 @@ function runMigration(projectDir, { dryRun = false, checkOnly = false } = {}) {
     missingCore.push('config.json(工作流配置)—— 从插件 templates/config.json 复制默认值,或跑 /ql-design 初始化时生成');
   }
   if (missingCore.length > 0) {
-    lines.push('⚠️ .planning/ 存在但核心工件缺失(残缺状态,常见原因:只使用过 /ql-fix、/ql-add 等旁路技能,主线未初始化):');
+    lines.push('⚠️ .qiling/planning/ 存在但核心工件缺失(残缺状态,常见原因:只使用过 /ql-fix、/ql-add 等旁路技能,主线未初始化):');
     for (const item of missingCore) lines.push(`  - ${item}`);
     lines.push('  版本迁移不代建核心工件,先补齐再谈迁移(/ql-next 会给出同样指引)。');
     lines.push('');
@@ -297,7 +336,7 @@ function runMigration(projectDir, { dryRun = false, checkOnly = false } = {}) {
   if (mutating.length > 0) {
     const fromLabel = detected.version || 'no-anchor';
     const backupPath = backupPlanning(ctx, fromLabel);
-    lines.push(`已备份 .planning/ → ${backupPath}`);
+    lines.push(`已备份 .qiling/planning/ → ${backupPath}`);
     for (const rule of mutating) {
       rule.apply(ctx);
     }
@@ -339,10 +378,12 @@ function selfTest() {
   rmSync(base, { recursive: true, force: true });
   mkdirSync(base, { recursive: true });
 
-  // ── 场景 1:旧版项目(config 无 inline_threshold、STATE 无锚点、verification 旧格式)──
+  // ── 场景 1:旧版项目(旧布局 .planning/、config 无 inline_threshold、STATE 无锚点、verification 旧格式)──
   const proj = join(base, 'old-project');
   mkdirSync(join(proj, '.planning', 'build'), { recursive: true });
   mkdirSync(join(proj, '.qiling', 'docs'), { recursive: true });
+  mkdirSync(join(proj, '.planning-backups'), { recursive: true });
+  writeFileSync(join(proj, '.planning-backups', 'legacy-marker.txt'), '旧根级备份', 'utf8');
   writeFileSync(join(proj, '.planning', 'config.json'), JSON.stringify({
     parallelization: { enabled: true, max_concurrent: 5, isolation: 'worktree', auto_merge: true }
   }, null, 2), 'utf8');
@@ -358,63 +399,71 @@ function selfTest() {
   assert('1a dry-run 退出码 0 且含计划', dry.exitCode === 0 && dry.output.includes('dry-run'));
   assert('1b dry-run 未修改 config.json',
     !readJsonSafe(join(proj, '.planning', 'config.json')).parallelization.inline_threshold);
+  assert('1c dry-run 未迁移目录(.planning 仍在原位)', existsSync(join(proj, '.planning', 'STATE.md')));
 
-  // 1c 实际迁移
+  // 1d 实际迁移
   const real = runMigration(proj, {});
-  assert('1c 迁移退出码 0 且报告完成', real.exitCode === 0 && real.output.includes('迁移完成'));
+  assert('1d 迁移退出码 0 且报告完成', real.exitCode === 0 && real.output.includes('迁移完成'));
 
-  // 2 字段落盘
-  const cfgAfter = readJsonSafe(join(proj, '.planning', 'config.json'));
-  assert('2 config.json 补上 inline_threshold=2', cfgAfter?.parallelization?.inline_threshold === 2);
+  // 2 M6 目录迁移:工作数据整体迁入 .qiling/planning/,旧目录不再存在
+  assert('2a .planning/ 已迁入 .qiling/planning/(旧目录消失)',
+    !existsSync(join(proj, '.planning')) && existsSync(join(proj, '.qiling', 'planning', 'STATE.md')));
+  assert('2b 旧根级 .planning-backups/ 并入 .qiling/planning-backups/legacy-root/',
+    !existsSync(join(proj, '.planning-backups'))
+    && readFileSync(join(proj, '.qiling', 'planning-backups', 'legacy-root', 'legacy-marker.txt'), 'utf8') === '旧根级备份');
 
-  // 3 锚点写入
-  const stateAfter = readFileSync(join(proj, '.planning', 'STATE.md'), 'utf8');
-  assert(`3 STATE.md 写入 ql_version=${targetVersion}`,
+  // 3 字段落盘(新布局)
+  const cfgAfter = readJsonSafe(join(proj, '.qiling/planning', 'config.json'));
+  assert('3 config.json 补上 inline_threshold=2', cfgAfter?.parallelization?.inline_threshold === 2);
+
+  // 4 锚点写入(新布局)
+  const stateAfter = readFileSync(join(proj, '.qiling/planning', 'STATE.md'), 'utf8');
+  assert(`4 STATE.md 写入 ql_version=${targetVersion}`,
     parseFrontmatter(stateAfter).ql_version === targetVersion);
 
-  // 4 备份存在且是旧态(备份在项目根 .planning-backups/)
-  const backupsRoot = join(proj, '.planning-backups');
+  // 5 备份存在且是旧态(备份在 .qiling/planning-backups/)
+  const backupsRoot = join(proj, '.qiling/planning-backups');
   const backupEntries = existsSync(backupsRoot) ? readdirSync(backupsRoot) : [];
   const backupDir = backupEntries.find(d => d.startsWith('.backup-'));
-  assert('4 备份目录已创建', !!backupDir);
+  assert('5 备份目录已创建', !!backupDir);
   if (backupDir) {
     const backupCfg = readJsonSafe(join(backupsRoot, backupDir, 'config.json'));
-    assert('4a 备份中的 config.json 是旧态(无 inline_threshold)',
+    assert('5a 备份中的 config.json 是旧态(无 inline_threshold)',
       backupCfg && backupCfg.parallelization.inline_threshold === undefined);
     const backupState = readFileSync(join(backupsRoot, backupDir, 'STATE.md'), 'utf8');
-    assert('4b 备份中的 STATE.md 无 ql_version', parseFrontmatter(backupState).ql_version === undefined);
+    assert('5b 备份中的 STATE.md 无 ql_version', parseFrontmatter(backupState).ql_version === undefined);
   }
 
-  // 5 幂等:二次迁移无需迁移
+  // 6 幂等:二次迁移无需迁移
   const again = runMigration(proj, {});
-  assert('5 二次迁移报告无需迁移', again.exitCode === 0 && again.output.includes('无需迁移'));
+  assert('6 二次迁移报告无需迁移', again.exitCode === 0 && again.output.includes('无需迁移'));
 
-  // 6 提示类:报告含 STALE 与重扫建议
-  assert('6a 旧 verification 触发 STALE 提示', real.output.includes('STALE'));
-  assert('6b 章节索引触发重扫提示', real.output.includes('/ql-scan --force'));
+  // 7 提示类:报告含 STALE 与重扫建议
+  assert('7a 旧 verification 触发 STALE 提示', real.output.includes('STALE'));
+  assert('7b 章节索引触发重扫提示', real.output.includes('/ql-scan --force'));
 
   // ── 场景 2:未初始化目录温和退出 ──
   const empty = join(base, 'empty-project');
   mkdirSync(empty, { recursive: true });
   const r2 = runMigration(empty, {});
-  assert('7 无 .planning 温和退出(码 0 + 指引)', r2.exitCode === 0 && r2.output.includes('无需迁移'));
+  assert('8 无工作数据目录温和退出(码 0 + 指引)', r2.exitCode === 0 && r2.output.includes('无需迁移'));
 
   // ── 场景 3:--check 只判断不执行 ──
   const proj2 = join(base, 'check-project');
-  mkdirSync(join(proj2, '.planning'), { recursive: true });
-  writeFileSync(join(proj2, '.planning', 'STATE.md'), '---\nstatus: discussed\n---\n\n# s\n', 'utf8');
-  writeFileSync(join(proj2, '.planning', 'config.json'), '{}', 'utf8');
+  mkdirSync(join(proj2, '.qiling/planning'), { recursive: true });
+  writeFileSync(join(proj2, '.qiling/planning', 'STATE.md'), '---\nstatus: discussed\n---\n\n# s\n', 'utf8');
+  writeFileSync(join(proj2, '.qiling/planning', 'config.json'), '{}', 'utf8');
   const chk = runMigration(proj2, { checkOnly: true });
-  const cfgUntouched = readJsonSafe(join(proj2, '.planning', 'config.json'));
+  const cfgUntouched = readJsonSafe(join(proj2, '.qiling/planning', 'config.json'));
   assert('8 --check 报告待迁移且不落盘', chk.exitCode === 0 && chk.output.includes('待迁移')
     && cfgUntouched && cfgUntouched.parallelization === undefined);
 
-  // ── 场景 4:残缺 .planning/(只有旁路工件)→ 显式警示,不静默"无需迁移" ──
+  // ── 场景 4:残缺 .qiling/planning/(只有旁路工件)→ 显式警示,不静默"无需迁移" ──
   const partial = join(base, 'partial-project');
-  mkdirSync(join(partial, '.planning', 'bugfix'), { recursive: true });
-  writeFileSync(join(partial, '.planning', 'bugfix', 'b1.md'), '---\nstatus: blocked\n---\n', 'utf8');
+  mkdirSync(join(partial, '.qiling/planning', 'bugfix'), { recursive: true });
+  writeFileSync(join(partial, '.qiling/planning', 'bugfix', 'b1.md'), '---\nstatus: blocked\n---\n', 'utf8');
   const r4 = runMigration(partial, {});
-  assert('9 残缺 .planning/ 输出核心工件缺失警示(非静默通过)',
+  assert('9 残缺 .qiling/planning/ 输出核心工件缺失警示(非静默通过)',
     r4.exitCode === 0 && r4.output.includes('核心工件缺失'));
   assert('9a 警示列出两项缺失工件与补建指引',
     r4.output.includes('STATE.md') && r4.output.includes('config.json')
@@ -424,8 +473,8 @@ function selfTest() {
 
   // ── 场景 5:STATE.md 存在但 config.json 缺失 → 只警示 config 一项,不误报 STATE ──
   const half = join(base, 'half-project');
-  mkdirSync(join(half, '.planning'), { recursive: true });
-  writeFileSync(join(half, '.planning', 'STATE.md'),
+  mkdirSync(join(half, '.qiling/planning'), { recursive: true });
+  writeFileSync(join(half, '.qiling/planning', 'STATE.md'),
     `---\nstatus: discussed\nql_version: '${targetVersion}'\n---\n\n# s\n`, 'utf8');
   const r5 = runMigration(half, {});
   assert('10 半残项目(缺 config.json)警示只含 config 一项',

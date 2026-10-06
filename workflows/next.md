@@ -20,17 +20,17 @@ consumes: STATE.md, 磁盘产物(openapi.yaml / verification.md / review.md / pr
 
 ```bash
 # A. 工作流产物
-S_STATE=.planning/STATE.md
-S_CONFIG=.planning/config.json
-S_CONTRACT=.planning/context/openapi.yaml
-S_FLOW=.planning/context/event-flow.md
-S_DECISIONS=.planning/context/decisions.md
-S_CONST=.planning/context/constitution.md
-S_SKEL=.planning/build/skeleton-report.md
-S_FILL=.planning/build/fill-report.md
-S_VERIF=.planning/build/verification.md
-S_REVIEW=.planning/build/review.md
-S_LEDGER=.planning/build/progress.md
+S_STATE=.qiling/planning/STATE.md
+S_CONFIG=.qiling/planning/config.json
+S_CONTRACT=.qiling/planning/context/openapi.yaml
+S_FLOW=.qiling/planning/context/event-flow.md
+S_DECISIONS=.qiling/planning/context/decisions.md
+S_CONST=.qiling/planning/context/constitution.md
+S_SKEL=.qiling/planning/build/skeleton-report.md
+S_FILL=.qiling/planning/build/fill-report.md
+S_VERIF=.qiling/planning/build/verification.md
+S_REVIEW=.qiling/planning/build/review.md
+S_LEDGER=.qiling/planning/build/progress.md
 
 for f in $S_STATE $S_CONFIG $S_CONTRACT $S_FLOW $S_DECISIONS $S_CONST $S_SKEL $S_FILL $S_VERIF $S_REVIEW $S_LEDGER; do
   test -f "$f" && echo "有 $f" || echo "无 $f"
@@ -53,21 +53,21 @@ git log --oneline -3
 
 # E. 遗留物
 ls .git/ql/worktrees/ 2>/dev/null             # worker worktree 未清理?
-ls .planning/bugfix/ 2>/dev/null              # bugfix 报告(有无 blocked)
-grep -l "status: blocked" .planning/bugfix/*.md 2>/dev/null
+ls .qiling/planning/bugfix/ 2>/dev/null              # bugfix 报告(有无 blocked)
+grep -l "status: blocked" .qiling/planning/bugfix/*.md 2>/dev/null
 ```
 
 ## 步骤 2: 状态判定(决策表,从上到下第一条命中即返回)
 
 | # | 磁盘事实 | 判定:你在哪 | 下一步 |
 |---|----------|--------------|--------|
-| 1 | 无 `.planning/` 且无 `.qiling/docs/` | 项目未初始化 | **新项目** → `/ql-design`;**接手已有代码** → `/ql-scan`(并列推荐,问一句哪种) |
-| 2 | 有 `.qiling/docs/` 但无 `.planning/` | 只有文档树,未进入开发循环 | `/ql-design` |
+| 1 | 无 `.qiling/planning/` 且无 `.qiling/docs/` | 项目未初始化 | **新项目** → `/ql-design`;**接手已有代码** → `/ql-scan`(并列推荐,问一句哪种) |
+| 2 | 有 `.qiling/docs/` 但无 `.qiling/planning/` | 只有文档树,未进入开发循环 | `/ql-design` |
 | 3 | ledger 存在且有 `status:FAIL` / `status:NOT_RUN` | 构建中断,有未完成任务 | **断点续跑** → `/ql-build`(从第一个非 PASS 继续) |
 | 4 | bugfix 报告有 `status: blocked` | 有未解决的缺陷 | 处理 blocked bug:`/ql-fix <同一 bug>`(读原报告的已排除假设) |
 | 5 | `.git/ql/worktrees/` 非空 | worker worktree 遗留 | 先清理 `git worktree remove`,再进下一步 |
-| 6 | 有 `.planning/` 但**无 STATE.md**(常见:目录里只有 bugfix/、add/ 等旁路工件,主线从未初始化) | 残缺的 `.planning/`,主线未初始化 | 新设计 → `/ql-design`;接手存量代码 → `/ql-scan`。**不是** `/ql-update`——迁移不代建核心工件,指过去只会空转 |
-| 7 | STATE.md 存在但**无 config.json** | 工作流配置缺失(派发阈值等一直在走默认值) | 从插件 `templates/config.json` 复制默认值到 `.planning/config.json`,再跑 `/ql-update` 补齐格式字段 |
+| 6 | 有 `.qiling/planning/` 但**无 STATE.md**(常见:目录里只有 bugfix/、add/ 等旁路工件,主线从未初始化) | 残缺的 `.qiling/planning/`,主线未初始化 | 新设计 → `/ql-design`;接手存量代码 → `/ql-scan`。**不是** `/ql-update`——迁移不代建核心工件,指过去只会空转 |
+| 7 | STATE.md 存在但**无 config.json** | 工作流配置缺失(派发阈值等一直在走默认值) | 从插件 `templates/config.json` 复制默认值到 `.qiling/planning/config.json`,再跑 `/ql-update` 补齐格式字段 |
 | 8 | STATE.md 存在且无 `ql_version` 锚点 | 项目建于旧版器灵,工件格式未随插件升级 | `/ql-update`(幂等:dry-run 预览 → 自动备份 → 迁移;已是最新时零改动) |
 | 9 | verification.md 存在且 `verified_at_commit` 落后 HEAD | 验证已 STALE | 重跑验证 → `/ql-build`(验证阶段) |
 | 10 | verification `status: gaps_found` | 验证未通过 | 修复差距 → `/ql-build` 或按报告修复建议 |

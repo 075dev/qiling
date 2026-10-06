@@ -31,8 +31,8 @@ function warn(msg) { warnings.push(msg); }
 
 // 准备沙盒
 if (existsSync(SANDBOX)) rmSync(SANDBOX, { recursive: true, force: true });
-mkdirSync(join(SANDBOX, '.planning', 'context'), { recursive: true });
-mkdirSync(join(SANDBOX, '.planning', 'build'), { recursive: true });
+mkdirSync(join(SANDBOX, '.qiling/planning', 'context'), { recursive: true });
+mkdirSync(join(SANDBOX, '.qiling/planning', 'build'), { recursive: true });
 
 console.log('\n🧪 模拟三步循环:ql-design → ql-build → ql-deliver\n');
 
@@ -91,12 +91,12 @@ status: discussed
 ---
 `;
 
-writeFileSync(join(SANDBOX, '.planning/context/openapi.yaml'), openapi);
-writeFileSync(join(SANDBOX, '.planning/context/event-flow.md'), eventFlow);
-writeFileSync(join(SANDBOX, '.planning/STATE.md'), state);
+writeFileSync(join(SANDBOX, '.qiling/planning/context/openapi.yaml'), openapi);
+writeFileSync(join(SANDBOX, '.qiling/planning/context/event-flow.md'), eventFlow);
+writeFileSync(join(SANDBOX, '.qiling/planning/STATE.md'), state);
 
 // 检查:讨论门控要求 openapi.yaml 至少有 1 个端点
-const opContent = readFileSync(join(SANDBOX, '.planning/context/openapi.yaml'), 'utf8');
+const opContent = readFileSync(join(SANDBOX, '.qiling/planning/context/openapi.yaml'), 'utf8');
 const endpointCount = (opContent.match(/^\s+(get|post|put|delete|patch):$/gm) || []).length;
 if (endpointCount >= 1) {
   ok(`讨论产出:openapi.yaml 含 ${endpointCount} 个端点(门控要求 ≥ 1)`);
@@ -127,7 +127,7 @@ endpoints_implemented: 2
 events_connected: 1
 waves_executed: 1
 ---`;
-writeFileSync(join(SANDBOX, '.planning/build/skeleton-report.md'), skeletonReport);
+writeFileSync(join(SANDBOX, '.qiling/planning/build/skeleton-report.md'), skeletonReport);
 
 if (skeletonReport.includes('endpoints_implemented: 2')) ok('骨架阶段:实现 2/2 端点');
 else warn('骨架阶段:端点数未对齐');
@@ -139,7 +139,7 @@ status: success
 mocks_replaced: 2
 test_coverage: 85
 ---`;
-writeFileSync(join(SANDBOX, '.planning/build/fill-report.md'), fillReport);
+writeFileSync(join(SANDBOX, '.qiling/planning/build/fill-report.md'), fillReport);
 
 if (fillReport.includes('status: success')) ok('填充阶段:报告状态 success');
 else err('填充阶段:报告状态非 success');
@@ -157,7 +157,7 @@ inputs:
 **契约符合度:100%**
 **流程符合度:100%**
 `;
-writeFileSync(join(SANDBOX, '.planning/build/verification.md'), verification);
+writeFileSync(join(SANDBOX, '.qiling/planning/build/verification.md'), verification);
 
 const vStatus = (verification.match(/^status:\s*(\S+)/m) || [])[1];
 if (vStatus === 'passed') ok('验证阶段:verification.md status = passed');
@@ -168,10 +168,10 @@ console.log('\n═══ 阶段 3:ql-deliver(交付)═══');
 
 // ship 前置检查(模拟)
 const checks = [
-  { name: 'verification.md 存在', pass: existsSync(join(SANDBOX, '.planning/build/verification.md')) },
+  { name: 'verification.md 存在', pass: existsSync(join(SANDBOX, '.qiling/planning/build/verification.md')) },
   { name: 'verification.md status=passed', pass: vStatus === 'passed' },
-  { name: 'openapi.yaml 存在', pass: existsSync(join(SANDBOX, '.planning/context/openapi.yaml')) },
-  { name: 'STATE.md 存在', pass: existsSync(join(SANDBOX, '.planning/STATE.md')) }
+  { name: 'openapi.yaml 存在', pass: existsSync(join(SANDBOX, '.qiling/planning/context/openapi.yaml')) },
+  { name: 'STATE.md 存在', pass: existsSync(join(SANDBOX, '.qiling/planning/STATE.md')) }
 ];
 
 for (const c of checks) {
@@ -195,7 +195,7 @@ const prBody = `## 实现 [从 OpenAPI 提取的功能集]
 
 🤖 由器灵工作流生成
 `;
-writeFileSync(join(SANDBOX, '.planning/build/pr-body.md'), prBody);
+writeFileSync(join(SANDBOX, '.qiling/planning/build/pr-body.md'), prBody);
 ok('ship 产出:PR body 已生成');
 
 // === 阶段 3.5:ql-doc(章节留档,ship 后自动) ===

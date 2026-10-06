@@ -1,6 +1,6 @@
 # 评审报告模板
 #
-# 用途:`.planning/build/review.md`
+# 用途:`.qiling/planning/build/review.md`
 # 产出者:ql-reviewer 子智能体(全新上下文,独立于实现者)
 
 ---

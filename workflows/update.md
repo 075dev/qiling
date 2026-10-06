@@ -2,8 +2,8 @@
 step: update
 points: update:pre, update:post
 agent-roles: orchestrator
-produces: 迁移后的 .planning/ 工件 + STATE.md 版本锚点(ql_version)+ 迁移报告(会话输出)
-consumes: .planning/ 全部工件, 插件自身版本, scripts/migrate.mjs
+produces: 迁移后的 .qiling/planning/ 工件 + STATE.md 版本锚点(ql_version)+ 迁移报告(会话输出)
+consumes: .qiling/planning/ 全部工件, 插件自身版本, scripts/migrate.mjs
 -->
 
 <purpose>
@@ -20,10 +20,10 @@ consumes: .planning/ 全部工件, 插件自身版本, scripts/migrate.mjs
 
 ```bash
 # 项目是否已用器灵初始化
-test -d .planning && echo "已初始化" || echo "未初始化"
+test -d .qiling/planning && echo "已初始化" || echo "未初始化"
 
 # 项目版本锚点(0.15.0 起存在;缺失 = 旧版项目)
-grep "^ql_version:" .planning/STATE.md 2>/dev/null || echo "无锚点(旧版项目)"
+grep "^ql_version:" .qiling/planning/STATE.md 2>/dev/null || echo "无锚点(旧版项目)"
 ```
 
 - **未初始化** → 无可迁移:新项目建议 `/ql-design`,接手已有代码建议 `/ql-scan`,结束
@@ -46,7 +46,7 @@ node <插件目录>/scripts/migrate.mjs
 ```
 
 引擎保证:
-- 修改前自动备份 `.planning/` → `.planning-backups/.backup-<旧版本>/`
+- 修改前自动备份 `.qiling/planning/` → `.qiling/planning-backups/.backup-<旧版本>/`
 - 幂等:重复执行报"无需迁移"
 - 执行后 STATE.md 写入 `ql_version: '<新版本>'` 锚点,后续升级走精确比较
 
@@ -58,7 +58,7 @@ node <插件目录>/scripts/migrate.mjs
 |------|----------|
 | 旧格式 verification.md(STALE) | 交付前重跑 `/ql-build` 验证阶段;不手改历史报告 |
 | 章节索引版本字段滞后 | `/ql-scan --force` 重新生成文档树;产物由渲染器维护 |
-| `.planning-backups/` 未忽略 | git 项目建议加入 `.gitignore` |
+| `.qiling/planning-backups/` 未忽略 | git 项目建议加入 `.gitignore` |
 
 ## 步骤 5: 汇报与收尾
 
@@ -66,7 +66,7 @@ node <插件目录>/scripts/migrate.mjs
 🔄 迁移完成(器灵 <旧版本或无锚点> → <新版本>):
 - 修改 N 项:[逐条列规则 id 与一句话]
 - 提示 M 项:[逐条,含建议动作]
-- 备份:<路径>(回退:直接覆盖回 .planning/)
+- 备份:<路径>(回退:直接覆盖回 .qiling/planning/)
 
 ✅ 下一步:/ql-next(从磁盘重新推导当前位置;旧验证结论已按提示处理)
 ```
