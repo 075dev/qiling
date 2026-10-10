@@ -73,7 +73,7 @@ if (marketplace) {
 }
 
 // 4. commands/ 与 skills/ 一致性
-const expectedCommands = ['ql-design', 'ql-build', 'ql-deliver', 'ql-doc', 'ql-scan', 'ql-fix', 'ql-add', 'ql-next', 'ql-update'];
+const expectedCommands = ['ql-design', 'ql-build', 'ql-deliver', 'ql-doc', 'ql-scan', 'ql-fix', 'ql-add', 'ql-replace', 'ql-next', 'ql-update'];
 const commandFiles = listFiles('commands', '.md');
 console.log(`  → 发现 ${commandFiles.length} 个 commands`);
 
@@ -426,8 +426,8 @@ if (warnings.length > 0) {
 if (errors.length === 0) {
   console.log('\n✅ 骨架验证通过!');
   console.log('\n📋 设计概览:');
-  console.log(`  • 核心循环:3 步(方案 → 构建 → 交付)+ 旁路(修 Bug / 加功能)`);
-  console.log(`  • 命令:${commandFiles.length} 个(ql-design、ql-build、ql-deliver、ql-doc、ql-scan、ql-fix、ql-add、ql-next、ql-update)`);
+  console.log(`  • 核心循环:3 步(方案 → 构建 → 交付)+ 旁路(修 Bug / 加功能 / 替换功能)`);
+  console.log(`  • 命令:${commandFiles.length} 个(ql-design、ql-build、ql-deliver、ql-doc、ql-scan、ql-fix、ql-add、ql-replace、ql-next、ql-update)`);
   console.log(`  • 工作流:${workflowFiles.length} 个`);
   console.log(`  • 子智能体:${agentFiles.length} 个(design-coach + coordinator + worker + reviewer)`);
   console.log(`  • 工件模板:${templateFiles.length} 个(OpenAPI + Mermaid 流程图 + 波次报告 + 评审/修 Bug 报告)`);

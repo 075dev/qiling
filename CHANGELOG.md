@@ -5,6 +5,27 @@
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.23.0] - 2026-10-10
+
+### 功能替换技能 /ql-replace(第三条旁路)+ 契约漂移补录(add-001)
+
+**背景:** 用户经 /ql-add 提出:开发中功能需求前后有差异,需要一个"针对性替换某个功能"的技能。既有入口缺位:/ql-add 只追加(端点只增不减),/ql-fix 只修缺陷(契约不变)——"换掉旧能力"没有门控入口,容易变成"加新的、旧的不管",契约与文档双双漂移。
+
+**新能力(/ql-replace,命令 + 技能 + 工作流三件套):**
+
+- **语义 = 置换**:新端点上线 + 旧端点显式处置,与 add(追加)/fix(缺陷)划界;行为不变的内部重组(重构)明确排除在外(重构技能仍暂缓)
+- **替换策略门**:默认 `deprecated` 过渡(旧端点标 deprecated + 指向替代物,契约 minor,沿用 legacy-aliases 惯例);`remove` 立即移除须用户显式确认(契约 major,呈现调用方清单后确认)
+- **调用方引用面(替换特有)**:定位阶段强制盘点旧功能的全部引用(workflows/skills/commands/agents/代码/测试),作为调用方改写与验收依据
+- **同批纪律**:新端点实现 + 旧端点处置 + 调用方改写同一批次;旧测试随替换改写,禁止新旧双跑绿灯
+- **旧痕迹残留专项**(评审必查):孤儿引用、文档残留、测试残留、deprecated 指向正确性
+- 章节同步遵循功能章节制:正文改写为最新态,演进史附录留痕;报告落 `.qiling/planning/replace/NNN-<slug>.md`
+
+**契约漂移补录(D9,spec-as-is 自愈):** 0.22.0 UI Plugin 轮在流程外实施,新增能力未走契约门。本轮一并补录:`build:ui`/`verify:ui`/`migrate:test` 三脚本(此前漏录)与 `ql_design_panel`/`ql_panel_data` 两 MCP 工具(新 tag `mcp-tools`,转译表新增 `/mcp-tools/<名>` 语义),新增 `PanelSummary` schema。契约 20 → 26 端点,契约版本 0.16.0 → **0.17.0**(仅新增,minor)。decisions.md 追加 D7(替换技能定位)/D8(替换策略默认)/D9(漂移补录);event-flow.md 新增场景 3(ql-replace 时序图)。
+
+**配套:** validate.mjs expectedCommands +ql-replace(命令/技能一致性断言随之覆盖);README/ARCHITECTURE 旁路清单、目录树、工作流计数(11→12)同步;版本五处 0.23.0。
+
+**验证:** 全套自检(validate / flow / schema / migrate / build:ui / verify:ui)+ 独立评审(见下)。
+
 ## [0.22.0] - 2026-10-10
 
 ### 契约/流程图交互面板:UI Plugin 能力落地(ZCode v3.15.1)

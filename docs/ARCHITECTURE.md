@@ -37,6 +37,7 @@
 
 旁路:ql-fix —— 修 Bug(复现 → 根因 → 最小修复 → 回归),循环外
 旁路:ql-add —— 加功能(定位章节 → 补契约 → 增量构建 → 同步文档),循环外
+旁路:ql-replace —— 替换功能(定位旧功能与调用方 → 策略冻结 → 契约处置旧端点 → 增量构建 → 旧痕迹清扫),循环外
 入口:ql-next —— 不确定做什么时,从磁盘事实推导当前位置并推荐下一步(只读零副作用)
 ```
 
@@ -93,17 +94,18 @@ qiling/(器灵 v0.15.0)
 │   ├── ql-doc.md                      # 章节文档
 │   ├── ql-fix.md                      # 修 Bug
 │   ├── ql-add.md                      # 加功能
+│   ├── ql-replace.md                  # 替换功能
 │   ├── ql-next.md                     # 下一步提示(状态感知入口)
 │   └── ql-update.md                   # 升级迁移(插件更新后迁移项目工件)
 ├── skills/                            # 嵌套式 SKILL.md(与命令同名)
-│   └── ql-{scan,design,build,deliver,doc,fix,add,next,update}/SKILL.md
-├── workflows/                         # 11 个工作流实现
+│   └── ql-{scan,design,build,deliver,doc,fix,add,replace,next,update}/SKILL.md
+├── workflows/                         # 12 个工作流实现
 │   ├── scan.md / design.md            # 初始化与方案
 │   ├── build-skeleton.md              # 波次并行骨架
 │   ├── build-fill.md                  # 波次并行填充 + 自动验证
 │   ├── review.md                      # 独立评审
 │   ├── deliver.md / doc.md            # 交付与章节渲染
-│   ├── fix.md / add.md                # 旁路:修 Bug 与加功能
+│   ├── fix.md / add.md / replace.md   # 旁路:修 Bug / 加功能 / 替换功能
 │   ├── next.md                        # 状态判定 → 下一步建议
 │   └── update.md                      # 升级迁移(dry-run → 备份 → 迁移 → 提示)
 ├── agents/                            # 4 个子智能体

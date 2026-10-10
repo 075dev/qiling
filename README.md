@@ -150,6 +150,7 @@ Wave 2:依赖 Wave 1 的端点(并行)
 /ql-deliver      # 交付:提交 PR,归档,推进下一阶段
 /ql-fix <描述>    # 修 Bug(随时可用,循环外)
 /ql-add <描述>    # 加功能(项目已初始化后,循环外)
+/ql-replace <描述> # 替换功能(需求变了,新实现置换旧能力,循环外)
 /ql-update        # 插件升级后跑一次:迁移项目工件到新版格式(dry-run 预览,自动备份)
 ```
 
@@ -177,7 +178,7 @@ Wave 2:依赖 Wave 1 的端点(并行)
 
 ```
 qiling/(器灵)
-├── commands/                  # 9 个命令入口(+4 个旧名别名)
+├── commands/                  # 10 个命令入口(+4 个旧名别名)
 │   ├── ql-scan.md             # 扫描代码 → 文档树
 │   ├── ql-design.md           # 定方案(契约 + 流程图)
 │   ├── ql-build.md            # 写代码(波次并行)
@@ -185,6 +186,7 @@ qiling/(器灵)
 │   ├── ql-doc.md              # 章节文档生成
 │   ├── ql-fix.md              # 修 Bug
 │   ├── ql-add.md              # 加功能
+│   ├── ql-replace.md          # 替换功能(旧能力退场 + 新实现上线)
 │   ├── ql-next.md             # 下一步提示(状态感知入口)
 │   └── ql-update.md           # 升级迁移(工件 → 新版格式)
 ├── skills/                    # 嵌套式 SKILL.md(与命令同名)
@@ -197,7 +199,7 @@ qiling/(器灵)
 │   ├── ql-add/SKILL.md
 │   ├── ql-next/SKILL.md
 │   └── ql-update/SKILL.md
-├── workflows/                 # 11 个工作流实现
+├── workflows/                 # 12 个工作流实现
 │   ├── scan.md                # 目录扫描 → 文档树
 │   ├── design.md              # 讨论引导 → 契约
 │   ├── build-skeleton.md      # 波次并行骨架
@@ -207,6 +209,7 @@ qiling/(器灵)
 │   ├── doc.md                 # 章节渲染
 │   ├── fix.md                 # 修 Bug 指导
 │   ├── add.md                 # 加功能指导(定位 → 契约 → 增量构建)
+│   ├── replace.md             # 替换功能指导(定位旧功能与调用方 → 策略冻结 → 处置旧端点)
 │   ├── next.md                # 状态判定 → 下一步建议(决策表)
 │   └── update.md              # 升级迁移(dry-run → 备份 → 迁移 → 提示)
 ├── agents/                    # 4 个子智能体
