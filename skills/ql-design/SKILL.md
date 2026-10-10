@@ -56,6 +56,8 @@ allowed-tools:
 - `.qiling/planning/context/decisions.md`(决策轨迹:每个非显然设计选择留痕 decision/reason/alternatives/tradeoff,append-only)
 - `.qiling/planning/STATE.md` 更新
 
+**可选——交互面板:** 契约与流程图冻结/修订后,可调用 MCP 工具 `ql_design_panel`(本插件自带)在宿主打开「器灵契约面板」,向用户交互式展示端点、schema 与 Mermaid 流程图;用户要求查看契约/流程图时同样调用。面板只读,不会修改工件。
+
 **下一步:** `/ql-build`
 </objective>
 

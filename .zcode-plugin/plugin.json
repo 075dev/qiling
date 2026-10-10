@@ -1,8 +1,8 @@
 {
   "name": "qiling",
   "displayName": "器灵 Zcode 工作流",
-  "version": "0.21.0",
-  "description": "器灵 Zcode 工作流插件:三步循环 定方案(ql-design)→ 写代码(ql-build,波次并行)→ 交付(ql-deliver),外加修 Bug(ql-fix)、加功能(ql-add)、章节文档(ql-doc)与项目扫描(ql-scan)。",
+  "version": "0.22.0",
+  "description": "器灵 Zcode 工作流插件:三步循环 定方案(ql-design)→ 写代码(ql-build,波次并行)→ 交付(ql-deliver),外加修 Bug(ql-fix)、加功能(ql-add)、章节文档(ql-doc)与项目扫描(ql-scan);附契约/流程图交互面板(ql_design_panel)。",
   "author": {
     "name": "ZcodePlugin",
     "url": "https://github.com/075dev/qiling"
@@ -21,12 +21,41 @@
     "mermaid",
     "discussion-driven",
     "spec-driven-development",
-    "docsmap"
+    "docsmap",
+    "ui-plugin",
+    "mcp-apps"
   ],
   "category": "workflow",
   "skills": "./skills/",
   "commands": "./commands/",
   "agents": "./agents/",
   "workflows": "./workflows/",
-  "templates": "./templates/"
+  "templates": "./templates/",
+  "mcpServers": {
+    "qiling-ui": {
+      "type": "stdio",
+      "command": "node",
+      "args": [
+        "${ZCODE_PLUGIN_ROOT}/mcp/server.mjs"
+      ],
+      "cwd": "${ZCODE_PROJECT_DIR}",
+      "env": {
+        "ZCODE_WORKSPACE_ROOT": "${ZCODE_PROJECT_DIR}"
+      }
+    }
+  },
+  "ui": {
+    "surfaces": [
+      {
+        "id": "design",
+        "title": {
+          "en": "QiLing Contract Panel",
+          "zh-CN": "器灵契约面板"
+        },
+        "server": "qiling-ui",
+        "resourceUri": "ui://qiling/panel.html",
+        "availability": "session"
+      }
+    ]
+  }
 }

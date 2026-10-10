@@ -1,7 +1,7 @@
 {
   "name": "@qiling/zcode-workflow",
-  "version": "0.21.0",
-  "description": "器灵 Zcode 工作流插件——三步循环:定方案(ql-design)→ 写代码(ql-build)→ 交付(ql-deliver),外加修 Bug(ql-fix)、加功能(ql-add)、升级迁移(ql-update)。",
+  "version": "0.22.0",
+  "description": "器灵 Zcode 工作流插件——三步循环:定方案(ql-design)→ 写代码(ql-build)→ 交付(ql-deliver),外加修 Bug(ql-fix)、加功能(ql-add)、升级迁移(ql-update)与契约/流程图交互面板。",
   "type": "module",
   "main": ".zcode-plugin/plugin.json",
   "files": [
@@ -14,7 +14,9 @@
     "docs",
     "README.md",
     "LICENSE",
-    "CHANGELOG.md"
+    "CHANGELOG.md",
+    "mcp",
+    "ui"
   ],
   "keywords": [
     "zcode",
@@ -41,6 +43,8 @@
     "docsmap": "node scripts/docsmap.mjs",
     "migrate": "node scripts/migrate.mjs",
     "migrate:test": "node scripts/migrate.mjs --self-test",
-    "verify:schema": "node scripts/jsonschema-check.mjs templates/config-schema.json templates/config.json"
+    "verify:schema": "node scripts/jsonschema-check.mjs templates/config-schema.json templates/config.json",
+    "build:ui": "node scripts/build-panel.mjs",
+    "verify:ui": "node scripts/ui-smoke.mjs"
   }
 }

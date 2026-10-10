@@ -5,6 +5,25 @@
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.22.0] - 2026-10-10
+
+### 契约/流程图交互面板:UI Plugin 能力落地(ZCode v3.15.1)
+
+**背景:** ZCode 桌面端 v3.15.1 开放 UI Plugin(插件级交互页面,MCP Apps 协议)。器灵此前是纯 content 插件(skills/commands/agents/workflows/templates),ql-design 产出的 openapi.yaml 与 event-flow.md 只能以文本形式阅读。本轮给插件补上 MCP 组件,把"契约 + 流程图"变成宿主内可交互的面板。
+
+**新能力(mcp/ + ui/ 两个新组件目录):**
+
+- **MCP stdio 服务**(`mcp/server.mjs`,零依赖 Node):注册 `ui://qiling/panel.html` 资源(`text/html;profile=mcp-app`,单文件内联面板)与 `ql://panel/data.json` 数据资源(每次读取从工作区磁盘现算);两个工具:`ql_design_panel`(带 `_meta.ui.resourceUri` + `surface: design`,模型调用即打开面板,返回概要)与 `ql_panel_data`(visibility `[model, app]`,资源读取不可用时的兜底数据通道)
+- **数据解析**:js-yaml(4.1.0,vendored)解析 openapi.yaml(info/servers/tags/paths/operations/components);event-flow.md 提取全部 ```mermaid 代码块(标题取上方最近标题行);STATE.md frontmatter 宽容解析(status/current_phase 等七个字段);工件定位 `.qiling/planning/` 优先、兼容旧 `.planning/` 布局
+- **面板页面**(`ui/panel.template.html` + `ui/src/{panel.js,panel.css}`,vanilla JS):三页签——契约(tag 分组 + 搜索 + 方法徽标 + deprecated 标记,端点展开参数表/请求体/响应,`$ref` 点击跳转)、流程图(mermaid 11.12.0 vendored 全量内联渲染,失败回退源码展示,查看源码开关)、Schemas(全量 components.schemas 树形展开 + 搜索);跟随宿主明暗主题;非宿主环境(浏览器直开)回退 `panel-data.json` 并显示引导
+- **manifest**:`.zcode-plugin/plugin.json` 新增 `mcpServers["qiling-ui"]`(`${ZCODE_PLUGIN_ROOT}` 定位服务、`${ZCODE_PROJECT_DIR}` 作工作区根)与 `ui.surfaces[id=design]`(availability `session`,侧栏可手动打开「器灵契约面板」)
+
+**工作流与文档:** ql-design SKILL.md 产出节提示可调用 `ql_design_panel` 向用户展示;validate.mjs 新增 UI 组件检查(mcp/ui 文件存在、manifest 字段一致、占位符无残留、禁用 `${CLAUDE_PLUGIN_ROOT}`);新增 `npm run build:ui`(模板组装单文件面板)与 `npm run verify:ui`(真起服务端走 MCP 握手→工具→资源 20 项断言)。
+
+**边界:** UI Plugin 仅 ZCode Desktop 本地工作区支持(Web/移动/远程不渲染面板,工具仍可用);面板为只读展示,不改契约文件;HTML 资源上限 16 MiB,当前面板约 2.7 MiB(mermaid 全量内联)。
+
+**验证:** verify:ui 20/20(对本仓库 .qiling/planning 样本:20 端点/3 流程图/status=reviewed);浏览器实测(静态服务直开面板):契约视图分组与详情展开、$ref 解析树、枚举渲染、3 张 sequenceDiagram SVG 全部正确渲染、Schemas 页签 9 个 schema 树形展开;validate 0 错误。
+
 ## [0.21.0] - 2026-10-06
 
 ### 功能域发现与分章:扫描器按功能单元自动建章(回应"为什么只有一个章节")

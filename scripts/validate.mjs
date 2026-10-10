@@ -359,6 +359,55 @@ check(existsSync(join(ROOT, 'scripts/jsonschema-check.mjs')), 'scripts/jsonschem
   }
 }
 
+// 11. UI 面板组件(mcp/ + ui/,0.22.0 契约/流程图交互面板)
+console.log('  → 检查 UI 面板组件(mcp/ + ui/)…');
+const uiServerPath = join(ROOT, 'mcp/server.mjs');
+if (!existsSync(uiServerPath)) {
+  errors.push('缺少 MCP 服务: mcp/server.mjs(UI 面板数据源)');
+} else {
+  const serverSrc = readFileSync(uiServerPath, 'utf8');
+  check(serverSrc.includes("require('./vendor/js-yaml.min.cjs')"), 'mcp/server.mjs 必须引用 vendored js-yaml');
+}
+check(existsSync(join(ROOT, 'mcp/vendor/js-yaml.min.cjs')), '缺少 vendored 依赖: mcp/vendor/js-yaml.min.cjs');
+check(existsSync(join(ROOT, 'mcp/vendor/LICENSES.md')), '缺少 vendored 许可说明: mcp/vendor/LICENSES.md');
+check(existsSync(join(ROOT, 'ui/src/mermaid.min.js')), '缺少 vendored 依赖: ui/src/mermaid.min.js');
+check(existsSync(join(ROOT, 'ui/panel.template.html')), '缺少面板模板: ui/panel.template.html');
+check(existsSync(join(ROOT, 'ui/src/panel.js')), '缺少面板源码: ui/src/panel.js');
+check(existsSync(join(ROOT, 'ui/src/panel.css')), '缺少面板样式: ui/src/panel.css');
+
+const builtPanel = join(ROOT, 'ui/panel.html');
+if (!existsSync(builtPanel)) {
+  errors.push('缺少面板构建产物: ui/panel.html(运行 npm run build:ui)');
+} else {
+  const panelHtml = readFileSync(builtPanel, 'utf8');
+  check(!panelHtml.includes('__PANEL_JS__') && !panelHtml.includes('__MERMAID_JS__') && !panelHtml.includes('__PANEL_CSS__'),
+    'ui/panel.html 含未替换占位符,请重跑 npm run build:ui');
+  check(panelHtml.includes('mermaid'), 'ui/panel.html 未内联 mermaid');
+}
+
+if (plugin) {
+  const mcpServers = plugin.mcpServers || {};
+  check(Boolean(mcpServers['qiling-ui']), 'plugin.json 必须声明 mcpServers["qiling-ui"]');
+  const uiServerCfg = mcpServers['qiling-ui'];
+  if (uiServerCfg) {
+    const args = JSON.stringify(uiServerCfg.args || []);
+    check(args.includes('${ZCODE_PLUGIN_ROOT}/mcp/server.mjs'), 'mcpServers[qiling-ui].args 必须指向 ${ZCODE_PLUGIN_ROOT}/mcp/server.mjs');
+    check(!args.includes('${CLAUDE_PLUGIN_ROOT}'), 'mcpServers 不得使用 ${CLAUDE_PLUGIN_ROOT}(应使用 ${ZCODE_PLUGIN_ROOT})');
+    check(Object.keys(uiServerCfg.env || {}).some((k) => String(uiServerCfg.env[k]).includes('${ZCODE_PROJECT_DIR}')),
+      'mcpServers[qiling-ui].env 必须把 ZCODE_WORKSPACE_ROOT 指向 ${ZCODE_PROJECT_DIR}');
+  }
+  const surfaces = plugin.ui?.surfaces || [];
+  const design = surfaces.find((s) => s.id === 'design');
+  check(Boolean(design), 'plugin.json 必须声明 ui.surfaces[id=design]');
+  if (design) {
+    check(design.server === 'qiling-ui', 'ui.surfaces[design].server 必须指向 qiling-ui');
+    check(design.resourceUri === 'ui://qiling/panel.html', 'ui.surfaces[design].resourceUri 必须是 ui://qiling/panel.html');
+    check(Boolean(design.title && design.title['zh-CN']), 'ui.surfaces[design].title 必须含 zh-CN');
+    check(design.availability === 'session', 'ui.surfaces[design].availability 必须是 session(侧栏可手动打开)');
+  }
+  check(existsSync(join(ROOT, 'ui', 'panel.html')) === Boolean(design), 'ui.surfaces 与 ui/panel.html 产物必须同时存在');
+}
+
 // 总结
 console.log('\n📊 验证结果:');
 console.log(`  错误: ${errors.length}`);
