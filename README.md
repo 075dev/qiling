@@ -112,6 +112,7 @@ Wave 2:依赖 Wave 1 的端点(并行)
 | **教科书式项目书** | /ql-scan、/ql-doc 产出为一本书:首页 = 前言 + 分篇目录 + 参考汇总 + 术语表;每章 = 本章导学(学习目标/前置/读法)→ 正文五章(是什么/快速上手/使用说明/配置与限制/故障排查)→ 本章小结/下一章 → 附录三章;章节内 `<!-- manual -->` 块供人工撰写,重扫自动保留 |
 | **决策轨迹** | 讨论中每个非显然设计选择落痕(决策/理由/否掉的备选/代价)到 decisions.md,append-only——worker 按设计意图填充,评审区分"实现错"与"契约滞后",加功能不静默推翻既有决策 |
 | **反套路评审** | reviewer 对照 8 条 AI 代码套路清单(mock 冒充实现、吞错误、契约字段未消费等)显式扫描,扫描结果可核 |
+| **AGENTS.md 全局管控** | /ql-init 把"按场景选命令"触发表、宪法铁律速览、契约纪律、STATE 快照渲染进项目根 AGENTS.md 的 `ql:managed` 管理块——宿主每轮会话自动注入,未敲 /ql- 命令的会话也按场景路由;确定性层(scripts/agents.mjs 提取工件渲染,幂等 + --check 测漂移)+ 手写区(管理块外永不触碰)双层(决策 D11) |
 | **Fresh evidence** | 每条验证命令记一行 PASS/FAIL/PRE-EXISTING;子代理报告只算声明,主会话亲自复核后才算通过 |
 | **不自动收尾** | 交付前呈现 branch/base/head,由用户选:创建 PR / 仅推送 / 保留本地 |
 
@@ -152,6 +153,7 @@ Wave 2:依赖 Wave 1 的端点(并行)
 /ql-add <描述>    # 加功能(项目已初始化后,循环外)
 /ql-replace <描述> # 替换功能(需求变了,新实现置换旧能力,循环外)
 /ql-update        # 插件升级后跑一次:迁移项目工件到新版格式(dry-run 预览,自动备份)
+/ql-init          # AGENTS.md 全局管控生成:宿主每轮会话自动注入,未敲命令的会话也按场景路由
 ```
 
 ---
@@ -182,7 +184,7 @@ Web 端/远程工作区暂不渲染面板(工具调用不受影响)。
 
 ```
 qiling/(器灵)
-├── commands/                  # 10 个命令入口(+4 个旧名别名)
+├── commands/                  # 11 个命令入口(+4 个旧名别名)
 │   ├── ql-scan.md             # 扫描代码 → 文档树
 │   ├── ql-design.md           # 定方案(契约 + 流程图)
 │   ├── ql-build.md            # 写代码(波次并行)
@@ -192,7 +194,8 @@ qiling/(器灵)
 │   ├── ql-add.md              # 加功能
 │   ├── ql-replace.md          # 替换功能(旧能力退场 + 新实现上线)
 │   ├── ql-next.md             # 下一步提示(状态感知入口)
-│   └── ql-update.md           # 升级迁移(工件 → 新版格式)
+│   ├── ql-update.md           # 升级迁移(工件 → 新版格式)
+│   └── ql-init.md             # AGENTS.md 全局管控生成(管理块确定性渲染)
 ├── skills/                    # 嵌套式 SKILL.md(与命令同名)
 │   ├── ql-scan/SKILL.md
 │   ├── ql-design/SKILL.md
@@ -202,8 +205,9 @@ qiling/(器灵)
 │   ├── ql-fix/SKILL.md
 │   ├── ql-add/SKILL.md
 │   ├── ql-next/SKILL.md
-│   └── ql-update/SKILL.md
-├── workflows/                 # 12 个工作流实现
+│   ├── ql-update/SKILL.md
+│   └── ql-init/SKILL.md
+├── workflows/                 # 13 个工作流实现
 │   ├── scan.md                # 目录扫描 → 文档树
 │   ├── design.md              # 讨论引导 → 契约
 │   ├── build-skeleton.md      # 波次并行骨架
@@ -215,7 +219,8 @@ qiling/(器灵)
 │   ├── add.md                 # 加功能指导(定位 → 契约 → 增量构建)
 │   ├── replace.md             # 替换功能指导(定位旧功能与调用方 → 策略冻结 → 处置旧端点)
 │   ├── next.md                # 状态判定 → 下一步建议(决策表)
-│   └── update.md              # 升级迁移(dry-run → 备份 → 迁移 → 提示)
+│   ├── update.md              # 升级迁移(dry-run → 备份 → 迁移 → 提示)
+│   └── init.md                # AGENTS.md 全局管控生成(手写区智能层 + 管理块确定性层)
 ├── agents/                    # 4 个子智能体
 │   ├── ql-design-coach.md         # 讨论引导
 │   ├── ql-builder-coordinator.md  # 协调器(分析依赖、划分波次、派发、合并)
@@ -244,6 +249,7 @@ qiling/(器灵)
 │   └── PARALLELIZATION.md     # 并行策略详细文档
 ├── scripts/validate.mjs       # 骨架 + 自描述一致性验证
 ├── scripts/migrate.mjs        # 升级迁移引擎(ql-update 的确定性层)
+├── scripts/agents.mjs         # AGENTS.md 管控块渲染器(ql-init 的确定性层)
 ├── scripts/rename.mjs
 ├── scripts/convertClaudeCommandToClaudeSkill.mjs
 ├── scripts/convertClaudeAgentToZcodeAgent.mjs

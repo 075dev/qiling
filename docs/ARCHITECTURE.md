@@ -85,8 +85,8 @@
 ## 目录结构
 
 ```
-qiling/(器灵 v0.15.0)
-├── commands/                          # 9 个命令入口(+4 个旧名别名)
+qiling/(器灵 v0.25.0)
+├── commands/                          # 11 个命令入口(+4 个旧名别名)
 │   ├── ql-scan.md                     # 扫描代码 → 文档树
 │   ├── ql-design.md                   # 定方案(契约 + 流程图)
 │   ├── ql-build.md                    # 写代码(波次并行)
@@ -96,10 +96,11 @@ qiling/(器灵 v0.15.0)
 │   ├── ql-add.md                      # 加功能
 │   ├── ql-replace.md                  # 替换功能
 │   ├── ql-next.md                     # 下一步提示(状态感知入口)
-│   └── ql-update.md                   # 升级迁移(插件更新后迁移项目工件)
+│   ├── ql-update.md                   # 升级迁移(插件更新后迁移项目工件)
+│   └── ql-init.md                     # AGENTS.md 全局管控生成(管理块确定性渲染)
 ├── skills/                            # 嵌套式 SKILL.md(与命令同名)
-│   └── ql-{scan,design,build,deliver,doc,fix,add,replace,next,update}/SKILL.md
-├── workflows/                         # 12 个工作流实现
+│   └── ql-{scan,design,build,deliver,doc,fix,add,replace,next,update,init}/SKILL.md
+├── workflows/                         # 13 个工作流实现
 │   ├── scan.md / design.md            # 初始化与方案
 │   ├── build-skeleton.md              # 波次并行骨架
 │   ├── build-fill.md                  # 波次并行填充 + 自动验证
@@ -107,7 +108,8 @@ qiling/(器灵 v0.15.0)
 │   ├── deliver.md / doc.md            # 交付与章节渲染
 │   ├── fix.md / add.md / replace.md   # 旁路:修 Bug / 加功能 / 替换功能
 │   ├── next.md                        # 状态判定 → 下一步建议
-│   └── update.md                      # 升级迁移(dry-run → 备份 → 迁移 → 提示)
+│   ├── update.md                      # 升级迁移(dry-run → 备份 → 迁移 → 提示)
+│   └── init.md                        # AGENTS.md 全局管控生成(手写区智能层 + 管理块确定性层)
 ├── agents/                            # 4 个子智能体
 │   ├── ql-design-coach.md          # 讨论引导
 │   ├── ql-builder-coordinator.md    # 协调器:依赖分析、波次划分、派发、合并
@@ -138,6 +140,7 @@ qiling/(器灵 v0.15.0)
 │   └── PARALLELIZATION.md             # 并行策略详细文档
 ├── scripts/validate.mjs
 ├── scripts/migrate.mjs                # 升级迁移引擎(ql-update 的确定性层)
+├── scripts/agents.mjs                 # AGENTS.md 管控块渲染器(ql-init 的确定性层)
 └── package.json
 ```
 

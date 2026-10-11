@@ -5,6 +5,32 @@
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.25.0] - 2026-10-11
+
+### AGENTS.md 全局管控生成:未敲命令的会话也走器灵流程(add-003)
+
+**背景:** 用户经 /ql-add 指出关键缺失:器灵的管控全靠用户主动敲 /ql- 命令触发——直接对会话说"修个 bug"的会话不知道路由纪律、不知道宪法红线,全局管控存在旁路。要求调研参考项目的 AGENTS.md 生成方式,完成器灵自己的生成功能。
+
+**调研与取舍(D11):** 参考 [agents.md 官方标准](https://agents.md)(根目录 Markdown、活文档、精简)、ZCode /init(宿主原生读根目录 AGENTS.md,零适配)、Claude Code /init(≤200 行、只写代理推不出来的东西、社区警示"自动生成易臃肿需人工策展")、repo-ready 等证据驱动生成器。**采用"确定性管理块 + AI 手写区"两层**——通用 init 的产物是项目说明书,器灵的差异化价值是管控路由。
+
+**新能力:**
+
+- **`/ql-init` 命令**(三件套:commands/ql-init.md + workflows/init.md + skills/ql-init):环境确认 → 手写区智能层(仅首次生成时 AI 补一段简短项目概述,已有内容一个字不动)→ 确定性渲染 → `--check` 校验收尾;`--check` 参数只测漂移不修改
+- **`scripts/agents.mjs` 确定性渲染器**(npm scripts `agents` / `agents:test`):从宪法(C 原则标题)、契约(info.version + 端点数)、STATE(status/phase/last_activity 折叠多行)、章节索引(章数/篇数)、目标 package.json(scripts 清单)提取事实,渲染 `<!-- ql:managed:start/end -->` 管理块合并进 `<root>/AGENTS.md`;缺件显式"未检出"禁止编造;幂等(内容未变不落盘);CLI:`--root/--check/--dry-run/--out/--self-test`
+- **管理块内容:** 按场景选命令触发表(11 场景覆盖全部 11 个核心命令)、宪法铁律速览、契约与决策纪律、STATE 当前位置快照、npm scripts 清单——宿主每轮会话自动注入,全局管控生效
+- **触发表自检:** 渲染前断言触发表与插件 commands/ 实际清单双向一致(引用不存在的命令报错、漏列新命令报错;4 个旧别名豁免)——命令改名/新增后 AGENTS.md 不会静默指向过期
+- **手写区保护:** 三种路径全覆盖——不存在(生成引导头+管理块)/ 已有管理块(只替换管理块,块外原样)/ 已有文件无管理块(末尾追加,原内容在前);`--check` 重渲染比对,漂移退出码 1
+
+**契约:** 28 → **30 端点**(+`/commands/ql-init`、`/scripts/agents`),契约版本 0.18.0 → **0.19.0**(仅新增,minor);新增 `AgentsSummary` schema;event-flow.md 新增场景 5(AGENTS.md 生成时序图)与事件 `agents.synced`;decisions.md 追加 D11; Clarifications 登记 add-003。
+
+**章节:** 新建第 14 章「ql-init · AGENTS.md 全局管控」(第四篇 · 支撑技能);索引目录与参考汇总联动。
+
+**Dogfooding:** 本仓自身实跑 `/ql-init` 链路:AGENTS.md 已生成(管理块 + 手写区项目概述)。评审抓出首轮生成时机错误(在版本/章节/STATE 变更前渲染 → 交付态即漂移)——修复后按"**渲染是本轮所有工件变更之后的末步**"纪律重渲染,`--check` 退出 0。
+
+**独立评审(ql-reviewer 子代理,全新上下文):** round 1 给出 critical ×2 + major ×1 + minor ×8(结论一契约合规 rejected / 结论二正确性 rejected / 结论三一致性 approved-with-comments):C-1 交付态即漂移(渲染时机)、C-2 管理块含生成日期(与 `--check` 字节比对互斥:跨日永久误报、幂等失效,契约与实现同步修订——日期移出管理块、`--check` 参数补进契约、409 删除、退出码 2 语义补记)、M-1 STATE 未更新。全部修复后 round 2 复审受影响区域通过。
+
+**验证:** `npm run agents:test` 21/21 断言(含跨日不漂移、真实替换路径、标记损坏显式报错三项评审驱动新增);全套自检(validate 0 错误 / flow 20 / schema / chapter / migrate 22/22 / docsmap);本仓 `agents.mjs --check` 退出 0(STATE/契约/章节全部就位后的末步渲染);版本五处 0.25.0。
+
 ## [0.24.0] - 2026-10-11
 
 ### 可视化文档面板:文档功能随插件 UI 能力进化(add-002)

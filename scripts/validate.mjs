@@ -73,7 +73,7 @@ if (marketplace) {
 }
 
 // 4. commands/ 与 skills/ 一致性
-const expectedCommands = ['ql-design', 'ql-build', 'ql-deliver', 'ql-doc', 'ql-scan', 'ql-fix', 'ql-add', 'ql-replace', 'ql-next', 'ql-update'];
+const expectedCommands = ['ql-design', 'ql-build', 'ql-deliver', 'ql-doc', 'ql-scan', 'ql-fix', 'ql-add', 'ql-replace', 'ql-next', 'ql-update', 'ql-init'];
 const commandFiles = listFiles('commands', '.md');
 console.log(`  → 发现 ${commandFiles.length} 个 commands`);
 
@@ -103,7 +103,8 @@ const requiredWorkflows = [
   'fix.md',
   'add.md',
   'next.md',
-  'update.md'
+  'update.md',
+  'init.md'
 ];
 
 const workflowFiles = listFiles('workflows', '.md');
