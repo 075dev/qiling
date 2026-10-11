@@ -406,6 +406,23 @@ if (plugin) {
     check(design.availability === 'session', 'ui.surfaces[design].availability 必须是 session(侧栏可手动打开)');
   }
   check(existsSync(join(ROOT, 'ui', 'panel.html')) === Boolean(design), 'ui.surfaces 与 ui/panel.html 产物必须同时存在');
+  // 0.24.0 文档面板(docs surface)
+  const docsSurface = surfaces.find((s) => s.id === 'docs');
+  check(Boolean(docsSurface), 'plugin.json 必须声明 ui.surfaces[id=docs](0.24.0 文档面板)');
+  if (docsSurface) {
+    check(docsSurface.server === 'qiling-ui', 'ui.surfaces[docs].server 必须指向 qiling-ui');
+    check(docsSurface.resourceUri === 'ui://qiling/docs.html', 'ui.surfaces[docs].resourceUri 必须是 ui://qiling/docs.html');
+    check(Boolean(docsSurface.title && docsSurface.title['zh-CN']), 'ui.surfaces[docs].title 必须含 zh-CN');
+    check(docsSurface.availability === 'session', 'ui.surfaces[docs].availability 必须是 session');
+  }
+  check(existsSync(join(ROOT, 'ui', 'docs.html')) === Boolean(docsSurface), 'ui.surfaces[docs] 与 ui/docs.html 产物必须同时存在');
+  check(serverSrcMustHaveDocs(), 'mcp/server.mjs 必须注册 ql_docs_panel 与 ql_docs_data 工具及 ql://docs/data.json 资源');
+}
+
+function serverSrcMustHaveDocs() {
+  if (!existsSync(uiServerPath)) return false;
+  const src = readFileSync(uiServerPath, 'utf8');
+  return src.includes("name: 'ql_docs_panel'") && src.includes("name: 'ql_docs_data'") && src.includes('ql://docs/data.json');
 }
 
 // 总结

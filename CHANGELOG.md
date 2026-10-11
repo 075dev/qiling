@@ -5,6 +5,29 @@
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.24.0] - 2026-10-11
+
+### 可视化文档面板:文档功能随插件 UI 能力进化(add-002)
+
+**背景:** 用户经 /ql-add 提出:插件已支持 UI(0.22.0 契约面板),文档应同步进化为"可视化文档"——先调研 GitHub 上的可视化文档项目作参考,再完成更精美、更详细的文档呈现。
+
+**调研与取舍(D10):** 参考 Starlight/VitePress(三栏布局 + 章节树 + 本页目录随滚动高亮)、Scalar/Redoc standalone(单文件模式 + 方法徽章)、docsify(运行时渲染,与数据资源架构同构)。**markdown 渲染采用自写轻量渲染器**而非 vendored marked——文档树实际用到的 markdown 子集小(标题/段落/表格/列表/代码块/行内代码/粗斜体/引用/链接/受限 `<details>`,HTML 注释跳过),自写渲染器输出全部走安全文本路径(零 XSS 面)、不引入第三个 vendored 库(延续零 npm 运行时依赖红线);mermaid 块直接复用既有 vendored mermaid 11.12.0。
+
+**新能力(docs surface,与 0.22.0 契约面板同架构):**
+
+- **MCP 工具**:`ql_docs_panel`(带 `_meta.ui.resourceUri = ui://qiling/docs.html` + `surface: docs`,模型调用即打开面板,返回概要:项目名/章节数/篇目数/mermaid 块数)与 `ql_docs_data`(visibility `[model, app]`,兜底数据通道;数据超 64KiB 自动瘦身正文并在 errors 注明,完整正文只走资源读取)
+- **数据层**(mcp/server.mjs):`buildDocsData` 从工作区 `.qiling/docs/`(兼容 `docs/`)现算——README.md 索引解析(篇目章节树:**加粗** 行 = 篇名,./chapters/*.md 链接 = 章条目)、各章 frontmatter 宽容解析 + 正文 markdown + 标题树(跳过代码块,全局编号供 TOC/锚点/滚动高亮三方对齐)+ 统计(表格/代码块/mermaid/行数)
+- **面板页面**(ui/docs.template.html + ui/src/{docs.js,docs.css},vanilla JS):三栏布局——左侧篇目章节树(标题搜索 + 章节状态标记)、中部 markdown 正文渲染、右侧本页目录(l2/l3,随滚动高亮当前节);章内链接跳转、mermaid 直渲(失败回退源码)、章节元信息 chips(功能域/版本/状态/统计/生成日期);跟随宿主明暗主题;非宿主环境回退 docs-data.json
+- **manifest**:`ui.surfaces` 增 `id: docs`(器灵文档面板,availability session);服务端头注释与面板标题同步
+- **构建**:`build-panel.mjs` 多模板化(panel + docs 两个目标,占位符残留检查),`--docs-data` 产出浏览器调试副本;`ui-smoke.mjs` 冒烟扩至 35 项断言;`validate.mjs` 第 11 节新增 docs surface 一致性断言
+- **markdown 源文件不动,可视化增值全在面板层**(增量构建纪律);docsmap 生成器的模板增强列为后续建议
+
+**契约:** 26 → **28 端点**(+`/mcp-tools/ql_docs_panel`、`/mcp-tools/ql_docs_data`),契约版本 0.17.0 → **0.18.0**(仅新增,minor);新增 `DocsSummary` schema;mcp-tools tag 描述更新;event-flow.md 新增场景 4(文档面板数据流时序图);decisions.md 追加 D10(可视化文档面板与渲染器取舍)。契约新增两项过程发现:JS 正则 `\b` 在中文标题后不成立(中文非 \w)、`/m` 模式下 lookahead `$` 匹配任意行尾导致目录段提前截断——均以行级匹配 + `(?![\s\S])` 修复,附冒烟回归。
+
+**章节:** 新建第 13 章「可视化面板」(第五篇),统一收录 0.22.0 契约面板(补欠章遗留)与本轮文档面板;索引目录与总章节数联动。
+
+**验证:** 全套自检绿(build:ui 两面板 / verify:ui 35 项 / validate / flow / schema / migrate 22 项)+ 独立评审(见下);版本五处 0.24.0。
+
 ## [0.23.0] - 2026-10-10
 
 ### 功能替换技能 /ql-replace(第三条旁路)+ 契约漂移补录(add-001)

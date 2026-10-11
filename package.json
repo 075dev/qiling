@@ -1,7 +1,7 @@
 {
   "name": "@qiling/zcode-workflow",
-  "version": "0.23.0",
-  "description": "器灵 Zcode 工作流插件——三步循环:定方案(ql-design)→ 写代码(ql-build)→ 交付(ql-deliver),外加修 Bug(ql-fix)、加功能(ql-add)、升级迁移(ql-update)、功能替换(ql-replace)与契约/流程图交互面板。",
+  "version": "0.24.0",
+  "description": "器灵 Zcode 工作流插件——三步循环:定方案(ql-design)→ 写代码(ql-build)→ 交付(ql-deliver),外加修 Bug(ql-fix)、加功能(ql-add)、升级迁移(ql-update)、功能替换(ql-replace)与契约/流程图面板与可视化文档面板(ql_docs_panel)。",
   "type": "module",
   "main": ".zcode-plugin/plugin.json",
   "files": [

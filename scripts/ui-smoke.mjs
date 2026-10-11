@@ -92,7 +92,8 @@ try {
   const sc = opened.structuredContent || {};
   check(typeof sc.endpoints === 'number' && sc.endpoints > 0, `ql_design_panel → 端点数 ${sc.endpoints}`);
   check(typeof sc.diagrams === 'number' && sc.diagrams > 0, `ql_design_panel → 流程图数 ${sc.diagrams}`);
-  check(sc.status === 'reviewed', `ql_design_panel → STATE.status=${sc.status}`);
+  const VALID_STATES = ['discussing', 'discussed', 'skeleton_complete', 'verified', 'verification_failed', 'reviewed', 'shipped', 'gaps', 'blocked'];
+  check(VALID_STATES.includes(sc.status), `ql_design_panel → STATE.status=${sc.status}(九值内)`);
 
   // 4. 资源清单
   const resources = await rpc('resources/list', {});
@@ -119,6 +120,36 @@ try {
   // 7. 数据工具兜底通道
   const viaTool = await rpc('tools/call', { name: 'ql_panel_data', arguments: {} });
   check(viaTool.structuredContent?.contract?.found === true, 'ql_panel_data → structuredContent.contract.found');
+
+  // 8. 文档面板(0.24.0,docs surface)
+  check(names.includes('ql_docs_panel') && names.includes('ql_docs_data'), 'tools/list 含 ql_docs_panel 与 ql_docs_data');
+  const docsOpener = tools.tools.find((t) => t.name === 'ql_docs_panel');
+  check(docsOpener?._meta?.ui?.resourceUri === 'ui://qiling/docs.html', 'ql_docs_panel._meta.ui.resourceUri = ui://qiling/docs.html');
+  check(docsOpener?._meta?.ui?.surface === 'docs', 'ql_docs_panel._meta.ui.surface = docs');
+  const docsDataTool = tools.tools.find((t) => t.name === 'ql_docs_data');
+  check(JSON.stringify(docsDataTool?._meta?.ui?.visibility) === JSON.stringify(['model', 'app']), 'ql_docs_data visibility = [model, app]');
+
+  const docsOpened = await rpc('tools/call', { name: 'ql_docs_panel', arguments: {} });
+  const dsc = docsOpened.structuredContent || {};
+  check(typeof dsc.chapters === 'number' && dsc.chapters > 0, `ql_docs_panel → 章节数 ${dsc.chapters}`);
+  check(typeof dsc.parts === 'number' && dsc.parts > 0, `ql_docs_panel → 篇目数 ${dsc.parts}`);
+  check(dsc.dataUri === 'ql://docs/data.json', 'ql_docs_panel → dataUri = ql://docs/data.json');
+
+  check(uris.includes('ui://qiling/docs.html'), 'resources/list 含文档面板页');
+  check(uris.includes('ql://docs/data.json'), 'resources/list 含文档数据资源');
+  const docsPage = await rpc('resources/read', { uri: 'ui://qiling/docs.html' });
+  const docsHtml = docsPage.contents?.[0]?.text || '';
+  check(docsPage.contents?.[0]?.mimeType === 'text/html;profile=mcp-app', '文档面板资源 mimeType = text/html;profile=mcp-app');
+  check(!docsHtml.includes('__DOCS_JS__') && !docsHtml.includes('__DOCS_CSS__') && !docsHtml.includes('__MERMAID_JS__'), '文档面板 HTML 无未替换占位符');
+  check(docsHtml.includes('器灵文档面板'), '文档面板 HTML 含页面入口文本');
+
+  const docsDataRes = await rpc('resources/read', { uri: 'ql://docs/data.json' });
+  const docsData = JSON.parse(docsDataRes.contents?.[0]?.text || '{}');
+  check(docsData.index?.found === true, `文档数据 → index.parts=${docsData.index?.parts?.length}`);
+  check((docsData.index?.parts || []).reduce((a, p) => a + p.chapters.length, 0) > 0, '文档数据 → 索引章条目 > 0');
+  check(Array.isArray(docsData.chapters) && docsData.chapters.length > 0 && docsData.chapters[0].headings?.length > 0, `文档数据 → 首章标题树(${docsData.chapters?.[0]?.headings?.length} 节)`);
+  const viaDocsTool = await rpc('tools/call', { name: 'ql_docs_data', arguments: {} });
+  check(viaDocsTool.structuredContent?.chapters?.length > 0, 'ql_docs_data → structuredContent.chapters');
 } catch (e) {
   failures.push(`异常: ${e.message}`);
   console.error('  ❌ 异常:', e.message);

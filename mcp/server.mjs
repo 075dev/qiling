@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * 器灵契约/流程图面板 —— MCP stdio 服务(零依赖,Node >= 20)
+ * 器灵契约/流程图面板 + 可视化文档面板 —— MCP stdio 服务(零依赖,Node >= 20)
  *
  * 职责(ZCode UI Plugin,见官方 UI_PLUGIN.md):
  * - 注册 ui://qiling/panel.html 资源,返回 text/html;profile=mcp-app(单文件内联面板)
@@ -8,12 +8,14 @@
  *   (.qiling/planning/context/{openapi.yaml,event-flow.md} + STATE.md,兼容旧 .planning/ 布局)
  * - 工具 ql_design_panel:模型可调用,带 _meta.ui 打开交互面板并返回概要
  * - 工具 ql_panel_data:数据备用通道(资源读取不可用时兜底,注意 64KiB structuredContent 上限)
+ * - 0.24.0 起对称提供文档面板:ui://qiling/docs.html + ql://docs/data.json +
+ *   工具 ql_docs_panel / ql_docs_data(数据源 .qiling/docs/ 文档树)
  *
  * 协议:stdio 上按行分隔的 JSON-RPC 2.0(MCP 规范)。调试日志只写 stderr。
  */
 
 import { createRequire } from 'node:module';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createInterface } from 'node:readline';
@@ -239,10 +241,181 @@ function summarize(data) {
   };
 }
 
+// ---------- 文档面板数据(.qiling/docs/ 文档树,0.24.0 起) ----------
+
+const DOCS_DIR_CANDIDATES = ['.qiling/docs', 'docs'];
+
+function findDocsArtifacts(root) {
+  for (const dir of DOCS_DIR_CANDIDATES) {
+    const docsDir = join(root, dir);
+    const index = join(docsDir, 'README.md');
+    const chaptersDir = join(docsDir, 'chapters');
+    if (existsSync(index) || existsSync(chaptersDir)) {
+      return { docsDir, index: existsSync(index) ? index : null, chaptersDir: existsSync(chaptersDir) ? chaptersDir : null };
+    }
+  }
+  return { docsDir: null, index: null, chaptersDir: null };
+}
+
+/** 章节/索引 markdown 的 frontmatter 宽容解析:只取平铺 key: value。 */
+function splitFrontmatter(raw) {
+  const fm = raw.match(/^---\s*\n([\s\S]*?)\n---\s*\n?/);
+  if (!fm) return { frontmatter: {}, body: raw };
+  const frontmatter = {};
+  for (const line of fm[1].split(/\r?\n/)) {
+    const m = line.match(/^([A-Za-z_][\w-]*)\s*:\s*(.*)$/);
+    if (m) frontmatter[m[1]] = m[2].replace(/^['"]|['"]$/g, '').trim();
+  }
+  return { frontmatter, body: raw.slice(fm[0].length) };
+}
+
+/** 标题树(跳过代码块内的 # 行);anchor 由前端按同一 slug 规则生成。 */
+function extractHeadings(body) {
+  const headings = [];
+  let inFence = false;
+  for (const line of body.split(/\r?\n/)) {
+    if (/^\s*```/.test(line)) { inFence = !inFence; continue; }
+    if (inFence) continue;
+    const hm = line.match(/^(#{1,6})\s+(.+?)\s*#*\s*$/);
+    if (hm) headings.push({ level: hm[1].length, text: hm[2].trim() });
+  }
+  return headings;
+}
+
+function chapterStats(body) {
+  let inFence = false;
+  let fenceLang = '';
+  let mermaid = 0;
+  let codeBlocks = 0;
+  let tables = 0;
+  let lines = 0;
+  for (const line of body.split(/\r?\n/)) {
+    lines++;
+    const fence = line.match(/^\s*```\s*(\S*)\s*$/);
+    if (fence) {
+      if (inFence) { if (fenceLang === 'mermaid') mermaid++; else if (fenceLang) codeBlocks++; inFence = false; }
+      else { inFence = true; fenceLang = fence[1] || ''; }
+      continue;
+    }
+    if (!inFence && /^\s*\|[\s:|-]+\|\s*$/.test(line)) tables++;
+  }
+  return { mermaid, codeBlocks, tables, lines };
+}
+
+function parseChapter(absPath) {
+  const raw = readFileSync(absPath, 'utf8');
+  const { frontmatter, body } = splitFrontmatter(raw);
+  const num = (absPath.match(/chapter-(\d+)/) || [])[1];
+  return {
+    found: true,
+    file: absPath.replace(/\\/g, '/'),
+    id: frontmatter.chapter_id || (num ? 'chapter-' + num : null),
+    title: frontmatter.title || ((body.match(/^#\s+(.+?)\s*$/m) || [])[1] || '').trim() || absPath.split(/[\\/]/).pop(),
+    part: frontmatter.part || null,
+    feature: frontmatter.feature || null,
+    status: frontmatter.status || null,
+    qlVersion: frontmatter.ql_version || null,
+    frontmatter,
+    body,
+    headings: extractHeadings(body),
+    stats: chapterStats(body),
+  };
+}
+
+/** 索引 README.md:标题 + 「目录」段篇目章节树(篇名 = **加粗** 行,章条目 = ./chapters/*.md 链接)。 */
+function parseDocsIndex(absPath) {
+  const raw = readFileSync(absPath, 'utf8');
+  const { frontmatter, body } = splitFrontmatter(raw);
+  const h1 = body.match(/^#\s+(.+?)\s*$/m);
+  const tocMatch = body.match(/^##\s+目录[^\n]*\n[\s\S]*?(?=\n---\s*\n|\n##\s|(?![\s\S]))/m);
+  const parts = [];
+  if (tocMatch) {
+    let current = null;
+    for (const line of tocMatch[0].split(/\r?\n/)) {
+      const partM = line.match(/^\*\*(.+?)\*\*\s*$/);
+      if (partM) {
+        current = { name: partM[1].trim(), chapters: [] };
+        parts.push(current);
+        continue;
+      }
+      const linkM = line.match(/^[-*]\s+\[(.+?)\]\(\.\/chapters\/([^)#\s]+?\.md)/);
+      if (linkM && current) current.chapters.push({ title: linkM[1].trim(), file: 'chapters/' + linkM[2] });
+    }
+  }
+  return {
+    found: true,
+    path: absPath,
+    title: h1 ? h1[1].trim() : (frontmatter.title || '项目书'),
+    parts,
+    body,
+    headings: extractHeadings(body),
+  };
+}
+
+function buildDocsData() {
+  const root = findWorkspaceRoot();
+  const artifacts = findDocsArtifacts(root);
+  const data = {
+    generatedAt: new Date().toISOString(),
+    workspace: root,
+    index: { found: false },
+    chapters: [],
+    errors: [],
+  };
+  if (artifacts.index) {
+    try {
+      data.index = parseDocsIndex(artifacts.index);
+    } catch (e) {
+      data.index = { found: false, path: artifacts.index, error: String(e.message || e) };
+      data.errors.push(`docs/README.md 解析失败: ${e.message}`);
+    }
+  }
+  if (artifacts.chaptersDir) {
+    let files = [];
+    try {
+      files = readdirSync(artifacts.chaptersDir).filter((f) => f.endsWith('.md')).sort();
+    } catch (e) {
+      data.errors.push(`chapters/ 目录读取失败: ${e.message}`);
+    }
+    for (const f of files) {
+      const abs = join(artifacts.chaptersDir, f);
+      try {
+        data.chapters.push(parseChapter(abs));
+      } catch (e) {
+        data.chapters.push({ found: false, file: abs.replace(/\\/g, '/'), title: f, error: String(e.message || e) });
+        data.errors.push(`章节 ${f} 解析失败: ${e.message}`);
+      }
+    }
+    data.chapters.sort((a, b) => {
+      const na = Number((a.file.match(/chapter-(\d+)/) || [])[1] || 999);
+      const nb = Number((b.file.match(/chapter-(\d+)/) || [])[1] || 999);
+      return na - nb;
+    });
+  }
+  return data;
+}
+
+function summarizeDocs(data) {
+  const chapters = data.chapters.filter((c) => c.found);
+  const parts = new Set(chapters.map((c) => c.part).filter(Boolean));
+  const mermaidBlocks = chapters.reduce((acc, c) => acc + (c.stats?.mermaid || 0), 0);
+  return {
+    workspace: data.workspace,
+    project: data.index.found ? data.index.title : null,
+    chapters: chapters.length,
+    parts: parts.size,
+    mermaidBlocks,
+    dataUri: 'ql://docs/data.json',
+    errors: data.errors,
+  };
+}
+
 // ---------- 资源 ----------
 
 const UI_RESOURCE_URI = 'ui://qiling/panel.html';
 const DATA_RESOURCE_URI = 'ql://panel/data.json';
+const DOCS_UI_RESOURCE_URI = 'ui://qiling/docs.html';
+const DOCS_DATA_RESOURCE_URI = 'ql://docs/data.json';
 
 function panelHtmlResource() {
   const abs = join(PLUGIN_ROOT, 'ui', 'panel.html');
@@ -265,6 +438,26 @@ function dataResource() {
   };
 }
 
+function docsHtmlResource() {
+  return {
+    uri: DOCS_UI_RESOURCE_URI,
+    name: '器灵文档面板',
+    title: '器灵可视化文档面板',
+    description: '渲染 .qiling/docs/ 文档树(项目书索引 + 章节文档)的交互面板:三栏布局(篇目章节树/正文/本页目录),mermaid 直渲,跟随宿主主题。',
+    mimeType: 'text/html;profile=mcp-app',
+    _meta: { 'zcode/csp': { unsafeEval: true } },
+  };
+}
+
+function docsDataResource() {
+  return {
+    uri: DOCS_DATA_RESOURCE_URI,
+    name: '文档数据',
+    description: '从当前工作区 .qiling/docs/ 现算的文档树数据(JSON:索引/篇目/章节正文/标题树)。',
+    mimeType: 'application/json',
+  };
+}
+
 function readResource(uri) {
   if (uri === UI_RESOURCE_URI) {
     const text = readFileSync(join(PLUGIN_ROOT, 'ui', 'panel.html'), 'utf8');
@@ -272,6 +465,14 @@ function readResource(uri) {
   }
   if (uri === DATA_RESOURCE_URI) {
     const data = buildPanelData();
+    return { contents: [{ uri, mimeType: 'application/json', text: JSON.stringify(data) }] };
+  }
+  if (uri === DOCS_UI_RESOURCE_URI) {
+    const text = readFileSync(join(PLUGIN_ROOT, 'ui', 'docs.html'), 'utf8');
+    return { contents: [{ uri, mimeType: 'text/html;profile=mcp-app', text }] };
+  }
+  if (uri === DOCS_DATA_RESOURCE_URI) {
+    const data = buildDocsData();
     return { contents: [{ uri, mimeType: 'application/json', text: JSON.stringify(data) }] };
   }
   throw new Error(`未知资源: ${uri}`);
@@ -329,6 +530,51 @@ const TOOLS = [
       };
     },
   },
+  {
+    name: 'ql_docs_panel',
+    description:
+      '打开器灵可视化文档面板(渲染 .qiling/docs/ 文档树)。读取当前工作区 .qiling/docs/ 下的 README.md 索引' +
+      '与 chapters/*.md 章节,在宿主打开三栏面板:左侧篇目章节树、中部 markdown 正文渲染(表格/代码块/mermaid 直渲)、' +
+      '右侧本页目录,支持章节内跳转与搜索,跟随宿主明暗主题。' +
+      '适用时机:ql-doc 或 ql-scan 产出/更新文档树后向用户展示;用户要求阅读项目书/章节文档;ql-add 章节同步后复核。',
+    inputSchema: { type: 'object', properties: {}, additionalProperties: false },
+    _meta: { ui: { resourceUri: DOCS_UI_RESOURCE_URI, surface: 'docs' } },
+    async run() {
+      const data = buildDocsData();
+      return {
+        content: [{ type: 'text', text: docsOpenText(data) }],
+        structuredContent: summarizeDocs(data),
+      };
+    },
+  },
+  {
+    name: 'ql_docs_data',
+    description:
+      '读取可视化文档面板数据(结构化 JSON:索引/篇目章节树/各章 frontmatter 与正文/标题树)。' +
+      '面板页面内部使用;数据较大时优先用资源读取 ql://docs/data.json(8MiB 上限),本工具结果受 64KiB structuredContent 限制——超限时自动瘦身(正文截断,完整正文只走资源读取)。',
+    inputSchema: { type: 'object', properties: {}, additionalProperties: false },
+    _meta: { ui: { visibility: ['model', 'app'] } },
+    async run() {
+      const data = buildDocsData();
+      let payload = data;
+      if (Buffer.byteLength(JSON.stringify(data)) > 60000) {
+        // structuredContent 64KiB 上限:瘦身(每章正文截断),完整数据走资源读取
+        payload = {
+          ...data,
+          truncated: true,
+          index: data.index.found ? { ...data.index, body: data.index.body.slice(0, 4000) } : data.index,
+          chapters: data.chapters.map((c) =>
+            c.found ? { ...c, body: c.body.slice(0, 2000), truncated: c.body.length > 2000 } : c
+          ),
+        };
+        payload.errors = [...data.errors, '数据超 64KiB,本结果已瘦身(正文截断);完整正文请走资源读取 ql://docs/data.json'];
+      }
+      return {
+        content: [{ type: 'text', text: JSON.stringify(payload) }],
+        structuredContent: payload,
+      };
+    },
+  },
 ];
 
 // ---------- JSON-RPC 分发 ----------
@@ -340,6 +586,21 @@ function toolDefinition(t) {
     inputSchema: t.inputSchema,
     _meta: t._meta,
   };
+}
+
+function docsOpenText(data) {
+  const s = summarizeDocs(data);
+  if (!s.chapters && !data.index.found) {
+    return [
+      '未找到器灵文档树(大约在 .qiling/docs/ 下找 README.md 与 chapters/)。',
+      '面板已打开,显示引导信息;也可先运行 /ql-scan(整树)或 /ql-doc(章节留档)产出文档,再打开面板。',
+    ].join('\n');
+  }
+  const parts = [`文档面板数据已就绪:${s.chapters} 个章节 / ${s.parts} 个篇目 / ${s.mermaidBlocks} 个 mermaid 图块`];
+  if (s.project) parts.push(`项目书《${s.project}》`);
+  parts.push('交互面板已在宿主打开(也可在会话侧栏「器灵文档面板」手动打开)。');
+  if (s.errors?.length) parts.push(`解析警告: ${s.errors.join(';')}`);
+  return parts.join('\n');
 }
 
 const METHODS = {
@@ -364,7 +625,7 @@ const METHODS = {
     return result;
   },
   'resources/list'() {
-    return { resources: [panelHtmlResource(), dataResource()] };
+    return { resources: [panelHtmlResource(), dataResource(), docsHtmlResource(), docsDataResource()] };
   },
   'resources/read'(params) {
     return readResource(params?.uri);
